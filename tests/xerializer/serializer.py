@@ -1,0 +1,173 @@
+from unittest import TestCase
+from xerializer.builtin_plugins import Literal
+from json import JSONDecodeError
+from tempfile import NamedTemporaryFile
+from xerializer import serializer as mdl
+from xerializer.abstract_type_serializer import TypeSerializer
+from pglib import numpy as pgnp
+import numpy as np
+import numpy.testing as npt
+
+
+class Mock:
+    def __init__(self, N=100, parent=None):
+        self.value = np.arange(N)
+        self.parent = parent
+
+    def __eq__(self, mock_ser):
+        return (
+            np.array_equal(self.value, mock_ser.value) and
+            np.array_equal(self.parent, mock_ser.parent) and
+            type(mock_ser) == Mock)
+
+
+class MockSerializer(TypeSerializer):
+    handled_type = Mock
+
+    def from_serializable(self, **kwargs):
+        return self.handled_type(**kwargs)
+
+    def as_serializable(self, obj):
+        return {
+            'N': len(obj.value),
+            'parent': obj.parent}
+
+
+class TestSerializer(TestCase):
+
+    def test_default_types(self):
+        srl = mdl.Serializer()
+
+        compound_obj_1 = [
+            {'abc': 0, 'def': 10.0},
+            0.0,
+            'abc',
+            {
+                'ghi': 100,
+                'jkl': [200.0,
+                        100,
+                        {'mno': [20, 30]}
+                        ]},
+            (1.0, {'abc': 123.0}, 10),
+            slice(10, 2, -2), slice(5), slice(None, None, -5)]
+
+        for obj in [
+                1,
+                [0, 1, 2],
+                {'a': 0, 'b': 1, 'c': 2},
+                {'__type__': 0, 'b': 1, 'c': 2},
+                {1, 2, 3, 4},
+                (1, 2, 3, 4),
+                compound_obj_1]:
+            self.assertEqual(srl.deserialize(srl.serialize(obj)), obj)
+
+    def test_literal(self):
+        srl = mdl.Serializer()
+        for obj in [
+                'abc',
+                1,
+                '1',
+                None,
+                'None',
+                [1, 2, 3, {'a': 0, 'b': 1, 'c': ('x', 'y', 'z')}]
+        ]:
+            self.assertEqual(srl.deserialize(srl.serialize(Literal(obj))), obj)
+
+    def test_dtype_serializer(self):
+        srl = mdl.Serializer()
+
+        for obj in [
+                np.dtype('f'),
+                np.dtype('datetime64'),
+                np.dtype('datetime64[m]'),
+                np.dtype([('fld1', 'f'), ('fld2', 'i')]),
+                np.dtype([('fld1', ('f', (10, 40))), ('fld2', 'i')]),
+                np.dtype([('fld1', ('f', (10, 40))), ('fld2', 'i'), ('date3', 'datetime64[1h]')])]:
+            self.assertEqual(srl.deserialize(srl.serialize(obj)), obj)
+
+    def test_default_extensions(self):
+
+        srl = mdl.Serializer()
+
+        obj = slice(10, 30, 20)
+        self.assertEqual(srl.deserialize(srl.serialize(obj)), obj)
+
+        obj = np.dtype([('f0', 'datetime64'), ('f1', 'f8')])
+        self.assertEqual(srl.deserialize(srl.serialize(obj)), obj)
+
+        obj = [
+            {'abc': 0, 'def': slice(10, 30, 20)},
+            0.0,
+            'abc',
+            {
+                'ghi': 100,
+                'jkl': [200.0,
+                        np.dtype([('f0', 'datetime64'), ('f1', 'f8')]),
+                        {'mno': [20, 30]}
+                        ]},
+            (1.0, {'abc': 123.0}, 10)]
+        self.assertEqual(srl.deserialize(srl.serialize(obj)), obj)
+
+    def test_user_extensions(self):
+
+        srl = mdl.Serializer([MockSerializer()])
+
+        #
+        obj = Mock(10)
+        self.assertEqual(srl.deserialize(srl.serialize(obj)), obj)
+
+        #
+        obj = [{'abc': Mock(10), 'def': 10.0},
+               Mock(20),
+               'abc',
+               {
+                   'ghi': Mock(30, parent=Mock(5)),
+                   'jkl': [200.0,
+                           100,
+                           {'mno': [20, 30]}
+                           ]},
+               (1.0, {'abc': 123.0}, 10)]
+        self.assertEqual(srl.deserialize(srl.serialize(obj)), obj)
+
+    def test_ndarray_extension(self):
+        srl = mdl.Serializer()
+        for arr in [
+                # np.array(0), #TODO - should work to but fails.
+                np.array([]),
+                np.datetime64('2020-10-10'),
+                pgnp.random_array((10, 5, 3), [('f0', 'datetime64[m]'), ('f1', 'f'), ('f2', 'i')]),
+                np.array((10, 5, 3)),
+                [{'abc': 0, 'def': 1, 'xyz': np.array([5, 6, 7])}]]:
+            serialized = srl.serialize(arr)
+            self.assertIsInstance(serialized, str)
+            npt.assert_equal(arr, dsrlzd := srl.deserialize(serialized))
+
+    def test_json_interface(self):
+        srl = mdl.Serializer()
+        for arr in [
+                # np.array(0), #TODO - should work to but fails.
+                np.array([]),
+                np.datetime64('2020-10-10'),
+                pgnp.random_array((10, 5, 3), [('f0', 'datetime64[m]'), ('f1', 'f'), ('f2', 'i')]),
+                np.array((10, 5, 3)),
+                [{'abc': 0, 'def': 1, 'xyz': np.array([5, 6, 7])}]]:
+            with NamedTemporaryFile() as tmp_fn:
+                tmp_fn = tmp_fn.name
+                # dumps/loads
+                npt.assert_equal(arr, srl.loads(srl.dumps(arr)))
+                # dump/load
+                srl.dump(arr, tmp_fn)
+                npt.assert_equal(arr, srl.load(tmp_fn))
+
+    def test_empty_file(self):
+        with NamedTemporaryFile() as tmp_fo:
+            tmp_fn = tmp_fo.name
+            srl = mdl.Serializer()
+
+            # Serializer.load raises an exception.
+            with self.assertRaisesRegex(
+                    JSONDecodeError, r'Expecting value: line 1 column 1 \(char 0\)'):
+                srl.load(tmp_fn)
+
+            # Serializer.load_safe, returns a boolean empty-file indicator.
+            self.assertEqual(srl.load_safe(tmp_fn), (None, 'empty'))

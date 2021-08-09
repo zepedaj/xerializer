@@ -1,0 +1,161 @@
+from .base import DtypeSerializer
+from xerializer.builtin_plugins import Literal, _BuiltinTypeSerializer
+from pglib.py import strict_zip
+from collections.abc import Iterable
+from datetime import date, datetime
+import numpy as np
+from numpy.lib.format import dtype_to_descr
+from ast import literal_eval
+import json
+from numbers import Number
+
+DT64_AS_STR_DTYPE = 'U30'
+
+
+def sanitize_dtype(in_dtype, datetime64_as_string=False):
+    """
+    Substitutes all datetime64 dtypes by strings. Returns a human-readable representation that can also converted to a dtype object.
+    """
+    kws = {'datetime64_as_string': datetime64_as_string}
+    if isinstance(in_dtype, np.dtype):
+        # Convert to list of tuples or string.
+        return sanitize_dtype(dtype_to_descr(in_dtype), **kws)
+    elif isinstance(in_dtype, str):
+        # Base types.
+        if np.dtype('O') == in_dtype:
+            raise Exception('Object dtype not supported.')
+        elif datetime64_as_string and np.issubdtype(in_dtype, np.datetime64):
+            # Map datetime64 sub-dtypes to strings, preserves all others.
+            return DT64_AS_STR_DTYPE
+        elif np.issubdtype(in_dtype, 'U'):
+            return str(np.dtype(in_dtype))[1:]  # Skip endianness.
+        else:
+            return str(np.dtype(in_dtype))  # Get formal string representation.
+    elif isinstance(in_dtype, list):
+        # List of tuples (see below for case tuple).
+        return [sanitize_dtype(_x, **kws) for _x in in_dtype]
+    elif isinstance(in_dtype, tuple):
+        # (field_name, field_dtype [, field_shape])
+        in_dtype = list(in_dtype)
+        in_dtype[1] = sanitize_dtype(in_dtype[1], **kws)
+        return tuple(in_dtype)
+    else:
+        raise Exception('Unexpected case.')
+
+
+def array_to_list(arr, nesting=0):
+    # Deals with two issues with ndarray.tolist(). (The datetime64 issue) The first is numpy.ndarray.tolist converts datetime64 objects to datetime objects, not ISO date strings, which are more human-friendly. (The tuple issue) The second is that structured arrays will result in (nested) lists of tuples, and these tuple format is required when going back from a list to a structure array. Tuples cannot be represented in serialized formats by default, and using a typed representation (e.g., {'__type__':'tuple', '__value__':[0,1,2]}) is too verbose (e.g., relative to [0,1,2]), especially with nested tuples. Hence this function represents an array as a list of nested base types and lists.
+    #
+    # Example outputs of ndarray.tolist illustrating these two points:
+    #
+    # (The datetime64 issue)
+    # In [63]: np.array(['2020-10-10'], dtype='datetime64[D]').tolist()
+    # Out[63]: [datetime.date(2020, 10, 10)]
+    #
+    # (The tuple issue)
+    # In [67]: np.array([(10, '2020-10-10')], dtype=[('id',int), ('date', 'datetime64[D]')]).tolist()
+    # Out[67]: [(10, datetime.date(2020, 10, 10))]
+    #
+    # Need to account for possibly nested tuples (dtypes of dtypes) possibly containing datetime strings.
+
+    # First possibility
+    if isinstance(arr, (str, Number)) or arr is None:
+        return arr
+    elif isinstance(arr, (date, datetime)):
+        return arr.isoformat()
+    elif isinstance(arr, (tuple, list)):
+        return [array_to_list(_x, nesting+1) for _x in arr]
+    elif isinstance(arr, np.ndarray):
+        return array_to_list(arr.tolist(), nesting+1)
+    else:
+        raise TypeError(
+            f'Invalid type {type(arr)} found in input container at nested level {nesting}.')
+
+    # # Second possibility. Faster?
+    # return json.loads(json.dumps(literal_eval(np.array2string(
+    #     arr, formatter={'float_kind': lambda x: "%.18g" % x}, separator=', '))))
+
+
+def count_dtype_depth(dtype):
+    if isinstance(dtype, np.dtype):
+        return count_dtype_depth(sanitize_dtype(dtype))
+    elif isinstance(dtype, list):
+        return 1 + max(
+            (count_dtype_depth(_sub_dtype) for _sub_dtype in dtype))
+    elif isinstance(dtype, tuple):
+        sub_type_name, sub_dtype, sub_dtype_shape = (list(dtype) + [[]])[:3]
+        return count_dtype_depth(sub_dtype) + len(sub_dtype_shape)
+    else:
+        return 0
+
+
+def count_list_depth(container):
+    if isinstance(container, list):
+        return 1 + max(
+            (count_list_depth(sub_container) for sub_container in container),
+            default=0)
+    else:
+        return 0
+
+
+def nested_lists_to_mixed(container, sanitized_dtype, cutoff_depth, curr_depth=0):
+    """
+    Helper function for _list_to_array.
+    """
+    if isinstance(container, list):
+        if curr_depth < cutoff_depth:
+            # Traversing dimensions of array.
+            return [nested_lists_to_mixed(_x, sanitized_dtype, cutoff_depth, curr_depth+1)
+                    if isinstance(_x, list) else _x
+                    for _x in container]
+        else:
+            # Traversing nested dtypes.
+            return tuple([
+                _list_to_array(_x, _sntzd_sub_dt[1])
+                for _x, _sntzd_sub_dt in strict_zip(container, sanitized_dtype)])
+
+    else:
+        return container
+
+
+def _list_to_array(arr_list, sanitized_dtype):
+    """
+    Helper function for list_to_array.
+    """
+
+    dtype_depth = count_dtype_depth(sanitized_dtype)
+    arr_depth = count_list_depth(arr_list)
+    arr_list = nested_lists_to_mixed(arr_list, sanitized_dtype, arr_depth - dtype_depth)
+    return arr_list
+
+
+def list_to_array(arr_list, dtype):
+    """
+    Converts a nested list containing no tuples, to one containing a mixture of lists and tuples determined by the specified dtype.
+    """
+    sanitized_dtype = sanitize_dtype(dtype)
+    arr_list = _list_to_array(arr_list, sanitized_dtype)
+    return np.array(arr_list, dtype=sanitized_dtype)
+
+
+class NDArraySerializer(_BuiltinTypeSerializer):
+    """
+    Numpy array serialization. Supports reading hand-written serializations with implicit dtype (to be deduced by numpy).
+    """
+
+    handled_type = np.ndarray
+    _dtype_serializer = DtypeSerializer()
+
+    def as_serializable(self, arr):
+        return {
+            'dtype': self._dtype_serializer.as_serializable(arr.dtype)['value'],
+            'value': array_to_list(arr)
+        }
+
+    def from_serializable(self, value, dtype=None):
+        if dtype is not None:
+            dtype = self._dtype_serializer.from_serializable(dtype)
+            out = list_to_array(value, dtype)
+        else:
+            out = np.array(value)
+        return out

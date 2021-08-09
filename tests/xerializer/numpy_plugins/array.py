@@ -1,0 +1,143 @@
+from unittest import TestCase
+from pglib.slice_sequence import SSQ_
+import numpy as np
+import xerializer.numpy_plugins.array as mdl
+import numpy.testing as npt
+
+
+class TestNDArraySerializer(TestCase):
+    def test_count_dtype_depth(self):
+        dt64_str = mdl.DT64_AS_STR_DTYPE
+        for _in_dtype, _expected_depth in [
+                #
+                (np.dtype('f'), 0),
+                #
+                (np.dtype('M8[D]'), 0),
+                #
+                (np.dtype('M8[m]'), 0),
+                #
+                (np.dtype([('f1', 'f'), ('f2', 'i')]), 1),
+                #
+                (np.dtype([('f1', 'f'), ('f2', 'M8[D]')]), 1),
+                #
+                (np.dtype([('f1', 'f'), ('f2', 'M8[D]'),
+                           ('f3', [('f1', 'f'), ('f2', 'M8[D]')])]),
+                 2),
+                #
+                (np.dtype([('f1', 'f'), ('f2', 'M8[D]'),
+                           ('f3', [('f1', 'f', (10, 5)), ('f2', 'M8[D]')])]),
+                 4)
+        ]:
+            self.assertEqual(mdl.count_dtype_depth(_in_dtype), _expected_depth)
+
+    def test_count_list_depth(self):
+        for _lst, _expected_depth in [
+                ('abc', 0),
+                (0.0, 0),
+                ([0, 1, 2], 1),
+                ([0, [0, 0], [0, 0, [0, 0]], [[[0], 0]]], 4)
+        ]:
+            self.assertEqual(mdl.count_list_depth(_lst), _expected_depth)
+
+    def test_sanitize_dtype(self):
+        dt64_str = mdl.DT64_AS_STR_DTYPE
+        for _in_dtype, _sanitized, _sanitized_no_dt64 in [
+
+                (np.dtype('f'), 'float32', 'float32'),
+
+                (np.dtype('M8[D]'), 'datetime64[D]', dt64_str),
+
+                (np.dtype('M8[m]'), 'datetime64[m]', dt64_str),
+
+                (np.dtype([('f1', 'f'), ('f2', 'i')]),
+                 [('f1', 'float32'), ('f2', 'int32')],
+                 [('f1', 'float32'), ('f2', 'int32')]),
+
+                (np.dtype([('f1', 'f'), ('f2', 'M8[D]')]),
+                 [('f1', 'float32'), ('f2', 'datetime64[D]')],
+                 [('f1', 'float32'), ('f2', dt64_str)]
+                 ),
+
+                (np.dtype([('f1', 'f'), ('f2', 'M8[D]'),
+                           ('f3', [('f1', 'f'), ('f2', 'M8[D]')])]),
+                 [('f1', 'float32'), ('f2', 'datetime64[D]'),
+                  ('f3', [('f1', 'float32'), ('f2', 'datetime64[D]')])],
+                 [('f1', 'float32'), ('f2', dt64_str),
+                  ('f3', [('f1', 'float32'), ('f2', dt64_str)])]),
+
+                (np.dtype([('f1', 'f'), ('f2', 'M8[D]'),
+                           ('f3', [('f1', 'f', (10, 5)), ('f2', 'M8[D]')])]),
+                 [('f1', 'float32'), ('f2', 'datetime64[D]'),
+                  ('f3', [('f1', 'float32', (10, 5)), ('f2', 'datetime64[D]')])],
+                 [('f1', 'float32'), ('f2', dt64_str),
+                  ('f3', [('f1', 'float32', (10, 5)), ('f2', dt64_str)])]),
+        ]:
+            # With datetime64
+            self.assertEqual(
+                mdl.sanitize_dtype(
+                    _in_dtype),
+                _sanitized)
+            arr1 = np.empty((3, 5), _in_dtype)
+            arr2 = np.empty((3, 5), _sanitized)
+            arr2[:] = arr1
+            # Use str bc nan comparison fails in structured arrays.
+            npt.assert_equal(str(arr1), str(arr2))
+
+            # With datetime64 as strings
+            self.assertEqual(
+                _from_in_dtype := mdl.sanitize_dtype(
+                    _in_dtype, datetime64_as_string=True),
+                _sanitized_no_dt64)
+            arr1 = np.empty((3, 5), _from_in_dtype)
+            arr2 = np.empty((3, 5), _sanitized_no_dt64)
+            arr2[:] = arr1
+            # Use str bc nan comparison fails in structured arrays.
+            npt.assert_equal(str(arr1), str(arr2))
+
+    def test_array_to_list(self):
+
+        for _arr, _arr_as_list in [
+                #
+                (np.array(1), 1),
+                #
+                (np.array((1, 2, '2020-10-10'), [('f0', 'i'), ('f1', 'f'), ('f3', 'M8[D]')]),
+                 [1, 2, '2020-10-10']),
+                #
+                (np.array(['2020-10-10', '2020-10-11', '2020-10-12'], 'M8[D]'),
+                 ['2020-10-10', '2020-10-11', '2020-10-12']),
+                #
+                (np.array(
+                    [('2020-10-12', 10, (5.0, '2020-10-13'))]*2,
+                    [('f0', 'M8[D]'), ('f1', int), ('f3', [('f4', float), ('f5', 'M8[D]')])]),
+                 [['2020-10-12', 10, [5.0, '2020-10-13']]]*2)
+        ]:
+            self.assertEqual(mdl.array_to_list(_arr), _arr_as_list)
+            npt.assert_array_equal(
+                mdl.list_to_array(mdl.array_to_list(_arr), mdl.sanitize_dtype(_arr.dtype)),
+                _arr)
+
+    def test_list_to_array(self):
+        for _dtype, dt64_posns in [
+                #
+                (np.dtype('f'), None),
+                #
+                (np.dtype('M8[D]'), [None]),
+                #
+                (np.dtype([('f1', 'f'), ('f2', 'i')]), None),
+                #
+                (np.dtype([('f1', 'f'), ('f2', 'M8[D]')]), [['f2']]),
+                #
+                (np.dtype([('f1', 'f'), ('f2', 'M8[D]'),
+                           ('f3', [('f1', 'f'), ('f2', 'M8[D]')])]),
+                 [['f2'], ['f3', 'f2']]),
+                #
+                (np.dtype([('f1', 'f'), ('f2', 'M8[D]'),
+                           ('f3', [('f1', 'f', (3, 2)), ('f2', 'M8[D]')])]),
+                 [['f2'], ['f3', 'f2']])
+        ]:
+            arr = np.empty((5, 3), dtype=_dtype)
+            npt.assert_equal(
+                arr,
+                mdl.list_to_array(
+                    mdl.array_to_list(arr),
+                    dtype=_dtype))

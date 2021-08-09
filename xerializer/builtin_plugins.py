@@ -1,0 +1,161 @@
+from .abstract_type_serializer import TypeSerializer, Serializable
+from ast import literal_eval
+
+
+class _BuiltinTypeSerializer(TypeSerializer):
+    register = False
+
+    @property
+    def signature(self):
+        return self.handled_type.__name__
+
+
+class _BuiltinSerializable(Serializable):
+    register = False
+
+    @classmethod
+    def get_signature(cls):
+        return cls.signature or cls.__name__
+
+
+class Literal(_BuiltinSerializable):
+    """
+    Wraps a literal python expression and makes it serializable as a string. Literal python expressions can be composed of base types (e.g., ``int``, ``float``, ``list``, ``tuple``, ``dict``, ``set``).
+
+    Note that de-serialization behaves differently for this class, as :meth:`from_serializable` produces a python expression and not a :class:`Literal` object.
+    """
+
+    def __init__(self, value, check=True):
+        self.value = value
+        if check:
+            self.check()
+
+    def __str__(self):
+        return f'Literal({self.as_serializable(self)})'
+
+    def check(self):
+        if (literal_eval(self.encode()) != self.value):
+            raise ValueError(f'Non-invertible input {self.value}.')
+
+    def encode(self):
+        if isinstance(self.value, str):
+            str_value = f"'{self.value}'"
+        else:
+            str_value = str(self.value)
+        return str_value
+
+    @classmethod
+    def decode(self, str_value: str):
+        return literal_eval(str_value)
+
+    def as_serializable(self):
+        return {'value': self.encode()}
+
+    @classmethod
+    def from_serializable(cls, value):
+        return cls.decode(value)
+
+
+class DictSerializer(_BuiltinTypeSerializer):
+    """
+    Implicit and explicit dictionary serialization.
+
+    .. ipython::
+
+        In [9]: from xerializer import Serializer
+
+        # Implicit serialization (less verbose).
+        In [10]: Serializer().as_serializable({'a':0, 'b': 1})
+        Out[10]: {'a': 0, 'b': 1}
+
+        # Explicit serialization (more verbose - used when '__type__' is a key).
+        In [11]: Serializer().as_serializable({'__type__':2, 'a':0, 'b': 1})
+        Out[11]: {'__type__': 'dict', '__value__': {'a': 0, 'b': 1, '__type__': 2}}
+    """
+
+    handled_type = dict
+    signature = 'dict'
+
+    def _build_typed_dict(self, obj, as_serializable):
+
+        val = {_key: as_serializable(_val)
+               for _key, _val in self.as_serializable(obj).items()}
+
+        if '__type__' in val:
+            return {
+                '__type__': self.signature,
+                'value': val
+            }
+        else:
+            return val
+
+    def _build_obj(self, obj, from_serializable):
+        if '__type__' in obj:
+            out = obj['value']
+        else:
+            out = obj
+        return {_key: from_serializable(_val) for _key, _val in out.items()}
+
+    def as_serializable(cls, obj):
+        return obj
+
+    def from_serializable(cls):
+        pass
+
+
+class TupleSerializer(_BuiltinTypeSerializer):
+    """
+    Tuple serialization.
+
+    .. ipython::
+
+        In [1]: from xerializer import Serializer
+
+        In [2]: Serializer().as_serializable((1,2,'abc',True))
+        Out[2]: {'__type__': 'tuple', '__value__': [1, 2, 'abc', True]}
+    """
+
+    handled_type = tuple
+
+    def as_serializable(self, obj):
+        return {'value': list(obj)}
+
+    def from_serializable(self, value):
+        return self.handled_type(value)
+
+
+class SetSerializer(TupleSerializer):
+    """
+    Set serialization.
+
+    .. ipython::
+
+        In [1]: from xerializer import Serializer
+
+        In [2]: Serializer().as_serializable({1,2,'abc',True})
+        Out[2]: {'__type__': 'set', '__value__': [1, 2, 'abc']}
+
+    """
+    handled_type = set
+
+
+class SliceSerializer(_BuiltinTypeSerializer):
+    """
+    Slice serialization.
+
+    .. ipython::
+
+        In [1]: from xerializer import Serializer
+
+        In [2]: Serializer().as_serializable(slice(None,-10, -2))
+        Out[2]: {'__type__': 'slice', 'stop': -10, 'step': -2}
+
+    """
+
+    handled_type = slice
+
+    def as_serializable(cls, obj):
+        return {_key: _val for _key in ['start', 'stop', 'step'] if (_val := getattr(obj, _key))}
+
+    def from_serializable(cls, start=None, stop=None, step=None):
+        return slice(start, stop, step)
