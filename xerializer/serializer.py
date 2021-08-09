@@ -5,17 +5,20 @@ Serialization
 
 The serialization protocols implemented by this module have the following aims:
 
-* Readability / ease of manual editing of serialized format.
-* Ease of extensibility with minimal coding overhead.
-* Wide support for built-in and widely-used objects (e.g., ``tuple``, ``set``, ``list``, ``dict``, ``numpy.dtype``,  ``numpy.ndarray``).
-* Safety
+* **Readability** / ease of **manual editing** of serialized format.
+* Ease of **extensibility** with minimal coding overhead - Classes can become serializable by deriving from :class:`~xerializer.Serializable` and implementing :meth:`~xerializer.Serializable.as_serializable` and optionally :meth:`~xerializer.Serializable.from_serializable`.
+* **Code unobstrusiveness** - Custom objects can also be made serializable by instead implementing a stand-alone :class:`~xerializer.TypeSerializer`, setting :attr:`~xerializer.TypeSerializer.handled_type` to the class to make serializable.
+* **Syntax unobtrusiveness** - JSON/YAML-compatible base types (numeric types, ``list``, ``dict``) are converted to serializable objects without any added verbosity :ref:`[1]<Syntax Overhead>` . Custom serializable types are serialized as dictionaries with a ``__type__``.
+* **Builtin type** (``tuple``, ``set``, ``slice``) support out-of-the-box.
+* **Numpy** support (``numpy.dtype``,  ``numpy.ndarray``), including (nested and/or shaped) structured dtypes out-of-the-box.
+* **Safety** - Only :class:`~xerializer.Serializable` objects or those with a :class:`~xerializer.TypeSerializer` will be deserialized into objects by :class:`~xerializer.Serializer`, and users have fine-grained control of enabled third-party and builtin plugins.
 
 Syntax
 --------
 The contents or :attr:`__args__` and :attr:`__kwargs__` can be any serializable type. When pre-fixed by ``'@py:'``, they can also be string representation of standard python objects (``byte``, ``tring``, ``int``, ``float``, ``list``, ``tuple``, ``set``, ``dict``, and any other supported by python's :meth:`ast.literal_eval`).
 
-Overhead
-----------
+Syntax Overhead
+----------------
 JSON/YAML-compatible base types are converted to serializable objects without any added verbosity. The exception is dictionaries that contain the key ``__type__``. Such dictinoaries are represented in the following more verbose form:
 
 .. code-block::
@@ -82,8 +85,9 @@ class Serializer:
               ]) if 'builtin' in precedence else []
 
         all_plugins['numpy'] = [getattr(numpy_plugins, name)() for name in [
-            'DtypeSerializer', 'NDArraySerializer', 'NDArrayAsBytesSerializer',
-            'Datetime64AsBytesSerializer']] if 'numpy' in precedence else []
+            'DtypeSerializer', 'NDArraySerializer',
+            # 'NDArrayAsBytesSerializer', 'Datetime64AsBytesSerializer'
+        ]] if 'numpy' in precedence else []
 
         all_plugins['third_party'] = {
             'as_serializable': _REGISTERED_AS_SERIALIZABLE_PLUGINS,

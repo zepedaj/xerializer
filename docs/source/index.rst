@@ -9,7 +9,9 @@ Python General Library
 .. toctree::
    :maxdepth: 2
 
+   content/_auto/examples.rst
    content/modules
+   
 
 Indices and tables
 ==================

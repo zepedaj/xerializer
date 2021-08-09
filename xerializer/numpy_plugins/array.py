@@ -148,7 +148,7 @@ class NDArraySerializer(_BuiltinTypeSerializer):
 
     def as_serializable(self, arr):
         return {
-            'dtype': self._dtype_serializer.as_serializable(arr.dtype)['value'],
+            'dtype': self._dtype_serializer.as_serializable(sanitize_dtype(arr.dtype))['value'],
             'value': array_to_list(arr)
         }
 

@@ -4,6 +4,7 @@ Flexible serialization.
 The supported types and their json string formats follow:
 
 .. ipython::
+    :okexcept:
 
     In [1]: from xerializer import Serializer, Literal
 
