@@ -1,46 +1,10 @@
 from .base import DtypeSerializer
-from xerializer.builtin_plugins import Literal, _BuiltinTypeSerializer
+from xerializer.builtin_plugins import _BuiltinTypeSerializer
 from pglib.py import strict_zip
-from collections.abc import Iterable
 from datetime import date, datetime
 import numpy as np
-from numpy.lib.format import dtype_to_descr
-from ast import literal_eval
-import json
 from numbers import Number
-
-DT64_AS_STR_DTYPE = 'U30'
-
-
-def sanitize_dtype(in_dtype, datetime64_as_string=False):
-    """
-    Substitutes all datetime64 dtypes by strings. Returns a human-readable representation that can also converted to a dtype object.
-    """
-    kws = {'datetime64_as_string': datetime64_as_string}
-    if isinstance(in_dtype, np.dtype):
-        # Convert to list of tuples or string.
-        return sanitize_dtype(dtype_to_descr(in_dtype), **kws)
-    elif isinstance(in_dtype, str):
-        # Base types.
-        if np.dtype('O') == in_dtype:
-            raise Exception('Object dtype not supported.')
-        elif datetime64_as_string and np.issubdtype(in_dtype, np.datetime64):
-            # Map datetime64 sub-dtypes to strings, preserves all others.
-            return DT64_AS_STR_DTYPE
-        elif np.issubdtype(in_dtype, 'U'):
-            return str(np.dtype(in_dtype))[1:]  # Skip endianness.
-        else:
-            return str(np.dtype(in_dtype))  # Get formal string representation.
-    elif isinstance(in_dtype, list):
-        # List of tuples (see below for case tuple).
-        return [sanitize_dtype(_x, **kws) for _x in in_dtype]
-    elif isinstance(in_dtype, tuple):
-        # (field_name, field_dtype [, field_shape])
-        in_dtype = list(in_dtype)
-        in_dtype[1] = sanitize_dtype(in_dtype[1], **kws)
-        return tuple(in_dtype)
-    else:
-        raise Exception('Unexpected case.')
+from ._helpers import sanitize_dtype
 
 
 def array_to_list(arr, nesting=0):
@@ -65,7 +29,7 @@ def array_to_list(arr, nesting=0):
         return arr.isoformat()
     elif isinstance(arr, (tuple, list)):
         return [array_to_list(_x, nesting+1) for _x in arr]
-    elif isinstance(arr, np.ndarray):
+    elif isinstance(arr, (np.ndarray, np.datetime64)):
         return array_to_list(arr.tolist(), nesting+1)
     else:
         raise TypeError(
@@ -143,6 +107,7 @@ class NDArraySerializer(_BuiltinTypeSerializer):
     Numpy array serialization. Supports reading hand-written serializations with implicit dtype (to be deduced by numpy).
     """
 
+    signature = 'array'
     handled_type = np.ndarray
     _dtype_serializer = DtypeSerializer()
 
@@ -159,3 +124,8 @@ class NDArraySerializer(_BuiltinTypeSerializer):
         else:
             out = np.array(value)
         return out
+
+
+class Datetime64Serializer(NDArraySerializer):
+    signature = 'datetime64'
+    handled_type = np.datetime64

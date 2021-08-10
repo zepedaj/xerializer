@@ -33,9 +33,12 @@ Composibility
 
 """
 
+from pglib.validation import check_expected_kwargs
+from itertools import chain
 from numbers import Number
 from . import builtin_plugins as builtin_plugins_module
 from .abstract_type_serializer import _SerializableSerializer
+from . import legacy  # Build/register classes that support legacy signatures. # NOQA
 from . import numpy_plugins
 from pglib.py import filelike_open
 import json
@@ -61,14 +64,29 @@ class Serializer:
 
     Default extensions include :class:`slice` objects and :class:`numpy.dtype` objects.
     """
+    default_precedence = ('plugins', 'third_party', 'builtin', 'numpy')
 
     def __init__(self, plugins: Union[list, dict] = None,
-                 precedence=('builtin', 'numpy', 'plugins', 'third_party')):
+                 precedence=None,
+                 numpy_as_bytes=False):
         """
         :param plugins: List of unregistered plugins to use as type serializers. Can also be a dictionary with keys 'as_serializable' and 'from_serializable' to specify plugins that will only be used for serialization and deserialization, respectively.
         :param precedence: Plugin order of precedence. Highest order of precedence plugins overwrite those with the same signature or handled type. Should be a list containing all or some of ['builtin', 'numpy', 'plugins', 'third_party']. Excluding elements from this list will also exclude the corresponding group of plugins.
+        :param numpy_as_bytes: Serialize numpy arrays as base64-encoded bytes (more concise, not readable/editable). Requires that 'numpy' be in :attr:`precedence` to have an effect.
+
+        .. todo:: Add tests to ensure precedence mechanism works.
         """
 
+        # Build precedence
+        precedence = self.default_precedence if precedence is None else precedence
+        check_expected_kwargs(self.default_precedence, precedence,
+                              'precedence values', missing_ok=True)
+        precedence = list(chain(*[
+            ['numpy_as_bytes', 'numpy'][::(2*numpy_as_bytes-1)]
+            if _group == 'numpy' else
+            [_group] for _group in precedence]))
+
+        # Assemble plugins
         all_plugins = {}
 
         if isinstance(
@@ -80,14 +98,17 @@ class Serializer:
         all_plugins['plugins'] = plugins or []
 
         all_plugins['builtin'] = ([getattr(builtin_plugins_module, name)() for name in [
-            'DictSerializer', 'TupleSerializer', 'SetSerializer', 'SliceSerializer',
+            'DictSerializer', 'TupleSerializer', 'SetSerializer', 'SliceSerializer', 'BytesSerializer'
         ]] + [_SerializableSerializer.create_derived_class(builtin_plugins_module.Literal)()
               ]) if 'builtin' in precedence else []
 
         all_plugins['numpy'] = [getattr(numpy_plugins, name)() for name in [
-            'DtypeSerializer', 'NDArraySerializer',
-            # 'NDArrayAsBytesSerializer', 'Datetime64AsBytesSerializer'
+            'DtypeSerializer', 'NDArraySerializer', 'Datetime64Serializer'
         ]] if 'numpy' in precedence else []
+
+        all_plugins['numpy_as_bytes'] = [getattr(numpy_plugins, name)() for name in [
+            'NDArrayAsBytesSerializer', 'Datetime64AsBytesSerializer'
+        ]] if 'numpy_as_bytes' in precedence else []
 
         all_plugins['third_party'] = {
             'as_serializable': _REGISTERED_AS_SERIALIZABLE_PLUGINS,
@@ -111,7 +132,7 @@ class Serializer:
                 _x.signature: _x for _x in plugin_group['from_serializable']
                 if _x.from_serializable})
 
-    @ classmethod
+    @classmethod
     def register_custom_serializer(
             cls,
             type_serializer,
@@ -121,6 +142,8 @@ class Serializer:
         :param type_serializer: The type serializer to register. Should derive from :class:`~pglib2.serializer2.abstract_type_serializer.Serializer`
         :param as_serializable: If ``True`` and ``type_serializer.as_serializable != None``, register this type serializer for serialization.
         :param from_serializable: If ``True`` and ``type_serializer.from_serializable != None``, register this type serializer for deserialization.
+
+        **Note**: Substituting the builtin dictionary serializer can lead to unexpected behavior. Care should be taken to correctly support both dictionaries with and without a '__type__' key.
         """
         if as_serializable and type_serializer.as_serializable is not None:
             cls.as_serializable_plugins[type_serializer.handled_type] = type_serializer

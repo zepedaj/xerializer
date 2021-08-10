@@ -3,11 +3,12 @@ from pglib.slice_sequence import SSQ_
 import numpy as np
 import xerializer.numpy_plugins.array as mdl
 import numpy.testing as npt
+from xerializer import Serializer
+from xerializer.numpy_plugins._helpers import DT64_AS_STR_DTYPE
 
 
 class TestNDArraySerializer(TestCase):
     def test_count_dtype_depth(self):
-        dt64_str = mdl.DT64_AS_STR_DTYPE
         for _in_dtype, _expected_depth in [
                 #
                 (np.dtype('f'), 0),
@@ -40,7 +41,7 @@ class TestNDArraySerializer(TestCase):
             self.assertEqual(mdl.count_list_depth(_lst), _expected_depth)
 
     def test_sanitize_dtype(self):
-        dt64_str = mdl.DT64_AS_STR_DTYPE
+        dt64_str = DT64_AS_STR_DTYPE
         for _in_dtype, _sanitized, _sanitized_no_dt64 in [
 
                 (np.dtype('f'), 'float32', 'float32'),
@@ -136,8 +137,21 @@ class TestNDArraySerializer(TestCase):
                  [['f2'], ['f3', 'f2']])
         ]:
             arr = np.empty((5, 3), dtype=_dtype)
-            npt.assert_equal(
-                arr,
-                mdl.list_to_array(
+
+            # Use array to string as NaN comparison fails in nested arrays with npt.assert_equal / npt.assert_array_equal.
+            self.assertEqual(
+                np.array2string(arr),
+                np.array2string(mdl.list_to_array(
                     mdl.array_to_list(arr),
-                    dtype=_dtype))
+                    dtype=_dtype)))
+
+
+class TestDatetime64(TestCase):
+    def test_serialize(self):
+        serializer = Serializer()
+        dt64_str = DT64_AS_STR_DTYPE
+        for _obj in [
+                #
+                np.datetime64('2020-10-10'),
+                np.datetime64('2020-10-10T10:00:00.123')]:
+            self.assertEqual(_obj, serializer.deserialize(serializer.serialize(_obj)))

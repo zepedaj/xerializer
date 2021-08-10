@@ -1,11 +1,22 @@
 from xerializer.abstract_type_serializer import TypeSerializer
+from ..builtin_plugins import _BuiltinTypeSerializer
+from ._helpers import sanitize_dtype
 import numpy as np
 from numpy.lib.format import dtype_to_descr
 import base64
 
 
-class DtypeSerializer(TypeSerializer):
+class DtypeSerializer(_BuiltinTypeSerializer):
     """
+
+    By default, serialization will produce a sanitized, more human-readable but non-endiannes-preserving representation. E.f., 'float32' instead of '<f8'.
+
+    To preserve endinannes, use
+    .. code-block::
+
+      from xserializer import Serializer
+      Serializer([DTypeSerializer(sanitize=False)])
+
     Converts :class:`np.dtype` objects to serializables of the form
 
     .. code-block::
@@ -34,6 +45,9 @@ class DtypeSerializer(TypeSerializer):
 
     handled_type = np.dtype
 
+    def __init__(self, sanitize=True):
+        self.sanitize = sanitize
+
     @classmethod
     def as_nested_lists(cls, dtype, depth=0):
         if isinstance(dtype, np.dtype):
@@ -42,7 +56,8 @@ class DtypeSerializer(TypeSerializer):
         elif isinstance(dtype, list):
             return [cls.as_nested_lists(_x, depth+1) for _x in dtype]
         elif isinstance(dtype, tuple):
-            return [dtype[0], cls.as_nested_lists(dtype[1], depth+1)] + list(dtype[2:])
+            return [dtype[0], cls.as_nested_lists(dtype[1], depth+1)] + (
+                [list(dtype[2])] if len(dtype) == 3 else [])
         elif isinstance(dtype, str):
             return dtype
         else:
@@ -52,7 +67,8 @@ class DtypeSerializer(TypeSerializer):
     def as_nested_tuple_lists(cls, dtype, as_tuple=False):
         if isinstance(dtype, list):
             if as_tuple:
-                out = [dtype[0], cls.as_nested_tuple_lists(dtype[1], as_tuple=False)] + dtype[2:]
+                out = [dtype[0], cls.as_nested_tuple_lists(dtype[1], as_tuple=False)] + (
+                    [tuple(dtype[2])] if len(dtype) == 3 else [])
                 out = tuple(out)
             else:
                 out = [cls.as_nested_tuple_lists(_x, as_tuple=True) for _x in dtype]
@@ -65,6 +81,7 @@ class DtypeSerializer(TypeSerializer):
 
     def as_serializable(self, obj):
         # return {'value': Literal(dtype_to_descr(obj)).encode()}
+        obj = sanitize_dtype(obj) if self.sanitize else obj
         return {'value': self.as_nested_lists(obj)}
 
     def from_serializable(self, value):
@@ -72,9 +89,10 @@ class DtypeSerializer(TypeSerializer):
         return np.dtype(self.as_nested_tuple_lists(value))
 
 
-class NDArrayAsBytesSerializer(TypeSerializer):
+class NDArrayAsBytesSerializer(_BuiltinTypeSerializer):
 
     handled_type = np.ndarray
+    signature = 'array_as_bytes'
 
     def as_serializable(self, arr):
         from pglib.numpy import encode_ndarray
@@ -87,3 +105,4 @@ class NDArrayAsBytesSerializer(TypeSerializer):
 
 class Datetime64AsBytesSerializer(NDArrayAsBytesSerializer):
     handled_type = np.datetime64
+    signature = 'datetime64_as_bytes'

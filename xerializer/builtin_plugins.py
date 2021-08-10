@@ -1,4 +1,5 @@
 from .abstract_type_serializer import TypeSerializer, Serializable
+import base64
 from ast import literal_eval
 
 
@@ -60,6 +61,7 @@ class DictSerializer(_BuiltinTypeSerializer):
     """
     Implicit and explicit dictionary serialization.
 
+    @doctest
     .. ipython::
 
         In [9]: from xerializer import Serializer
@@ -94,13 +96,14 @@ class DictSerializer(_BuiltinTypeSerializer):
             out = obj['value']
         else:
             out = obj
+        out = self.from_serializable(out)
         return {_key: from_serializable(_val) for _key, _val in out.items()}
 
     def as_serializable(cls, obj):
         return obj
 
-    def from_serializable(cls):
-        pass
+    def from_serializable(cls, value):
+        return value
 
 
 class TupleSerializer(_BuiltinTypeSerializer):
@@ -128,6 +131,7 @@ class SetSerializer(TupleSerializer):
     """
     Set serialization.
 
+    @doctest
     .. ipython::
 
         In [1]: from xerializer import Serializer
@@ -143,6 +147,7 @@ class SliceSerializer(_BuiltinTypeSerializer):
     """
     Slice serialization.
 
+    @doctest
     .. ipython::
 
         In [1]: from xerializer import Serializer
@@ -159,3 +164,17 @@ class SliceSerializer(_BuiltinTypeSerializer):
 
     def from_serializable(cls, start=None, stop=None, step=None):
         return slice(start, stop, step)
+
+
+class BytesSerializer(_BuiltinTypeSerializer):
+    """
+    Bytes serialization.
+    """
+
+    handled_type = bytes
+
+    def as_serializable(self, obj: bytes):
+        return {'value': base64.b64encode(obj).decode('ascii')}
+
+    def from_serializable(self, value):
+        return base64.b64decode(value.encode('ascii'))

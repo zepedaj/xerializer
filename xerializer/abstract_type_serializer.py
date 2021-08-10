@@ -1,24 +1,6 @@
 """
 
-This module defines three main protocols for class serialization embodied by the three abstract classes (in order from most flexible to most user-friendly)
-
-* :class:`TypeSerializer`,
-* :class:`InitTypeSerializer` and
-* :class:`KWTypeSerializer`.
-
-Each class can be derived from by the target class or by a stand-alone serializer. In the stand-alone case, the derived class needs to specify the target class by overloading :meth:`handled_type<`.
-
-Besides possibly overloading :meth:`handled_type`, each class requires overloading one or both of of the methods
-
-* :meth:`as_serializable`, and
-* :meth:`from_serializable`.
-
-
-:class:`TypeSerializer` serializes objects into dictionaries with keys ``['__type__', '__value__']``. Such classes require defining :meth:`as_serializable` and :meth:`from_serializable`.
-
-:class:`InitTypeSerializer` serializes objects into dictionaries with keys ``['__type__', '__args__', '__kwargs__']`` (only ``'__type__'`` is required). Such classes require a dedicated :meth:`from_serializable` method, and use the :meth:`__init__` method of the type returned by :meth:`handled_type` as the default :meth:`from_serializer`.
-
-:class:`KWTypeSerializer` serializes objects into dictionaries with a ``'__type__'`` key and keys corresponding to each keyword argument (only ``'__type__'`` is required), behaving otherwise in the same manner as :class:`InitTypeSerializer``.
+.. todo:: Add unit tests to ensure automatic registration mechanism works.
 
 
 """
@@ -71,7 +53,7 @@ class TypeSerializer(metaclass=_SerializerMeta):
         """
         Property containing the string used in the :attr:`__type__` field of the serializable object. This can be any string. By default it is the fully-qualified name of the handled type.
         """
-        return class_name(self.handled_type, stripped_modules=[])
+        return class_name(self.handled_type)
 
     @property
     @abc.abstractmethod
@@ -120,7 +102,7 @@ class _SerializableSerializer(TypeSerializer):
 
     @classmethod
     def create_derived_class(cls, handled_type, name=None, **attributes):
-        name = name or handled_type.__name__ + cls.__name__
+        name = name or (cls.__name__ + '_' + handled_type.__name__)
         return type(name, (cls,), {'handled_type': handled_type, **attributes})
 
 
@@ -142,8 +124,8 @@ class _SerializableMeta(abc.ABCMeta):
 
         super().__init__(name, bases, dct)
 
-        # Class creation also registers it automatically.
-        if cls.register:
+        # Class creation also registers it automatically (if the class is not abstract).
+        if not isabstract(cls) and cls.register:
             _SerializableSerializer.create_derived_class(cls)
 
 
@@ -167,7 +149,7 @@ class Serializable(metaclass=_SerializableMeta):
         """
         Classmethod returning the signature for the class. Returns :attr:`signature` or the fully-qualified name of the class.
         """
-        return cls.signature or class_name(cls, stripped_modules=[])
+        return cls.signature or class_name(cls)
 
     @abc.abstractmethod
     def as_serializable(self) -> Dict[str, Any]:
