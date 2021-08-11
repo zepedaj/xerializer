@@ -160,7 +160,8 @@ class SliceSerializer(_BuiltinTypeSerializer):
     handled_type = slice
 
     def as_serializable(cls, obj):
-        return {_key: _val for _key in ['start', 'stop', 'step'] if (_val := getattr(obj, _key))}
+        return {_key: _val for _key in ['start', 'stop', 'step']
+                if (_val := getattr(obj, _key)) is not None}
 
     def from_serializable(cls, start=None, stop=None, step=None):
         return slice(start, stop, step)
