@@ -1,36 +1,5 @@
 """
-
-Serialization
----------------
-
-The serialization protocols implemented by this module have the following aims:
-
-* **Readability** / ease of **manual editing** of serialized format.
-* Ease of **extensibility** with minimal coding overhead - Classes can become serializable by deriving from :class:`~xerializer.Serializable` and implementing :meth:`~xerializer.Serializable.as_serializable` and optionally :meth:`~xerializer.Serializable.from_serializable`.
-* **Code unobstrusiveness** - Custom objects can also be made serializable by instead implementing a stand-alone :class:`~xerializer.TypeSerializer`, setting :attr:`~xerializer.TypeSerializer.handled_type` to the class to make serializable.
-* **Syntax unobtrusiveness** - JSON/YAML-compatible base types (numeric types, ``list``, ``dict``) are converted to serializable objects without any added verbosity :ref:`[1]<Syntax Overhead>` . Custom serializable types are serialized as dictionaries with a ``__type__``.
-* **Builtin type** (``tuple``, ``set``, ``slice``) support out-of-the-box.
-* **Numpy** support (``numpy.dtype``,  ``numpy.ndarray``), including (nested and/or shaped) structured dtypes out-of-the-box.
-* **Safety** - Only :class:`~xerializer.Serializable` objects or those with a :class:`~xerializer.TypeSerializer` will be deserialized into objects by :class:`~xerializer.Serializer`, and users have fine-grained control of enabled third-party and builtin plugins.
-
-Syntax
---------
-The contents or :attr:`__args__` and :attr:`__kwargs__` can be any serializable type. When pre-fixed by ``'@py:'``, they can also be string representation of standard python objects (``byte``, ``tring``, ``int``, ``float``, ``list``, ``tuple``, ``set``, ``dict``, and any other supported by python's :meth:`ast.literal_eval`).
-
-Syntax Overhead
-----------------
-JSON/YAML-compatible base types are converted to serializable objects without any added verbosity. The exception is dictionaries that contain the key ``__type__``. Such dictinoaries are represented in the following more verbose form:
-
-.. code-block::
-
-  {'__type__': 'dict',
-   'value': <original dictionary>}
-
-
-
-Composibility
----------------
-
+:class:`Serializer` class implementation.
 """
 
 from pglib.validation import check_expected_kwargs
@@ -38,7 +7,6 @@ from itertools import chain
 from numbers import Number
 from . import builtin_plugins as builtin_plugins_module
 from .abstract_type_serializer import _SerializableSerializer
-from . import legacy  # Build/register classes that support legacy signatures. # NOQA
 from . import numpy_plugins
 from pglib.py import filelike_open
 import json
@@ -66,7 +34,8 @@ class Serializer:
     """
     default_precedence = ('plugins', 'third_party', 'builtin', 'numpy')
 
-    def __init__(self, plugins: Union[list, dict] = None,
+    def __init__(self,
+                 plugins: Union[list, dict] = None,
                  precedence=None,
                  numpy_as_bytes=False):
         """
@@ -98,7 +67,7 @@ class Serializer:
         all_plugins['plugins'] = plugins or []
 
         all_plugins['builtin'] = ([getattr(builtin_plugins_module, name)() for name in [
-            'DictSerializer', 'TupleSerializer', 'SetSerializer', 'SliceSerializer', 'BytesSerializer'
+            'DictSerializer', 'ListDeSerializer', 'TupleSerializer', 'SetSerializer', 'SliceSerializer', 'BytesSerializer'
         ]] + [_SerializableSerializer.create_derived_class(builtin_plugins_module.Literal)()
               ]) if 'builtin' in precedence else []
 
@@ -131,24 +100,6 @@ class Serializer:
             self.from_serializable_plugins.update({
                 _x.signature: _x for _x in plugin_group['from_serializable']
                 if _x.from_serializable})
-
-    @classmethod
-    def register_custom_serializer(
-            cls,
-            type_serializer,
-            as_serializable=True,
-            from_serializable=True):
-        """
-        :param type_serializer: The type serializer to register. Should derive from :class:`~pglib2.serializer2.abstract_type_serializer.Serializer`
-        :param as_serializable: If ``True`` and ``type_serializer.as_serializable != None``, register this type serializer for serialization.
-        :param from_serializable: If ``True`` and ``type_serializer.from_serializable != None``, register this type serializer for deserialization.
-
-        **Note**: Substituting the builtin dictionary serializer can lead to unexpected behavior. Care should be taken to correctly support both dictionaries with and without a '__type__' key.
-        """
-        if as_serializable and type_serializer.as_serializable is not None:
-            cls.as_serializable_plugins[type_serializer.handled_type] = type_serializer
-        if from_serializable and type_serializer.from_serializable is not None:
-            cls.from_serializable_plugins[type_serializer.signature] = type_serializer
 
     def as_serializable(self, obj):
 

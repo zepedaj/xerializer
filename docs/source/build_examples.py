@@ -17,6 +17,7 @@ def main(outfile):
 
         # Print title
         doc_title = 'Examples'
+        print('.. _Examples:\n')
         print(doc_title)
         print('='*len(doc_title))
 

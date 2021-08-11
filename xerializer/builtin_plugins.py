@@ -143,6 +143,12 @@ class SetSerializer(TupleSerializer):
     handled_type = set
 
 
+# Provided for consistenty, not required. The standard syntax [1,2,3] is used by default for serialization, but the typed syntax is understood for deserialization.
+class ListDeSerializer(TupleSerializer):
+    handled_type = list
+    as_serializable = None
+
+
 class SliceSerializer(_BuiltinTypeSerializer):
     """
     Slice serialization.
@@ -160,7 +166,8 @@ class SliceSerializer(_BuiltinTypeSerializer):
     handled_type = slice
 
     def as_serializable(cls, obj):
-        return {_key: _val for _key in ['start', 'stop', 'step'] if (_val := getattr(obj, _key))}
+        return {_key: _val for _key in ['start', 'stop', 'step']
+                if (_val := getattr(obj, _key)) is not None}
 
     def from_serializable(cls, start=None, stop=None, step=None):
         return slice(start, stop, step)
