@@ -2,6 +2,8 @@
 
 .. todo:: Add unit tests to ensure automatic registration mechanism works.
 
+.. warning:: Both :class:`TypeSerializer` and :class:`Serializable` use the same metaclass as :class:`abc.ABC`. One should hence not also derive from :class:`abc.ABC` when creating an abstract :class:`TypeSerializer` child class. Doing so will result in a metaclass error during class declaration.
+
 
 """
 import abc
@@ -21,7 +23,7 @@ class _SerializerMeta(abc.ABCMeta):
 
 class TypeSerializer(metaclass=_SerializerMeta):
     """
-    Generic object serializer. A target class to serialize can inherit form this class or be handled with a standalone class that implements this interface. In the second case, class method :meth:`check_type` needs to be overloaded.
+    Generic object serializer. A target class to serialize can inherit form this class or be handled with a standalone class that implements this interface. In the second case, class method :meth:`check_type` needs to be overloaded. 
     """
 
     register = True
@@ -131,7 +133,7 @@ class _SerializableMeta(abc.ABCMeta):
 
 class Serializable(metaclass=_SerializableMeta):
     """
-    Base class to make custom classes serializable. Classes deriving from this class are by default automatically registered with :class:`xerializer.Serializer`.
+    Base class to make custom classes serializable. Classes deriving from this class are by default automatically registered with :class:`xerializer.Serializer`. Note that :class:`Serializable` uses the same metaclass as :class:`abc.ABC`, so one should not also derive from :class:`abc.ABC` when creating an abstract :class:`Serializable` child class (doing so will result in metclass errors).
     """
 
     signature = None
