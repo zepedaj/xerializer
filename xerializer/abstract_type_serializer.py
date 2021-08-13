@@ -104,8 +104,16 @@ class _SerializableSerializer(TypeSerializer):
 
     @classmethod
     def create_derived_class(cls, handled_type, name=None, **attributes):
-        name = name or (cls.__name__ + '_' + handled_type.__name__)
-        return type(name, (cls,), {'handled_type': handled_type, **attributes})
+        name = name or (f'_{handled_type.__name__}_Serializer')
+        return type(
+            name,
+            (cls,),
+            {
+                'handled_type': handled_type,
+                '__module__': __name__,
+                **attributes
+
+            })
 
 
 class _SerializableMeta(abc.ABCMeta):
