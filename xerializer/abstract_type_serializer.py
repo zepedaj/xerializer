@@ -4,7 +4,6 @@
 
 .. warning:: Both :class:`TypeSerializer` and :class:`Serializable` use the same metaclass as :class:`abc.ABC`. One should hence not also derive from :class:`abc.ABC` when creating an abstract :class:`TypeSerializer` child class. Doing so will result in a metaclass error during class declaration.
 
-
 """
 import abc
 from inspect import ismethod
@@ -14,16 +13,9 @@ from inspect import isabstract
 from pglib.py import class_name
 
 
-class _SerializerMeta(abc.ABCMeta):
-    def __init__(cls, name, bases, namespace):
-        super().__init__(name, bases, namespace)
-        if not isabstract(cls) and getattr(cls, 'register', True):
-            register_custom_serializer(cls())
-
-
-class TypeSerializer(metaclass=_SerializerMeta):
+class TypeSerializer(abc.ABC):
     """
-    Generic object serializer. A target class to serialize can inherit form this class or be handled with a standalone class that implements this interface. In the second case, class method :meth:`check_type` needs to be overloaded. 
+    Generic object serializer. A target class to serialize can inherit form this class or be handled with a standalone class that implements this interface. In the second case, class method :meth:`check_type` needs to be overloaded.
     """
 
     register = True
@@ -81,6 +73,25 @@ class TypeSerializer(metaclass=_SerializerMeta):
         """
         return self.handled_type(**kwargs)
 
+    def __init_subclass__(cls, register_meta=None, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if cls._decide_register(cls, register_meta):
+            register_custom_serializer(cls())
+
+    @staticmethod
+    def _decide_register(cls, register_meta):
+        if not isabstract(cls) and (
+                register_meta or (
+                register_meta is None and cls.register)):
+            return True
+        elif register_meta:
+            # Ideally, this exception message should include the names of the missing methods.
+            # But cls.__abstractmethods__ raises an AttributeError at this point in the class
+            # creation...
+            raise Exception(
+                f'Cannot register abstract class {cls}.')
+        return False
+
 
 class _SerializableSerializer(TypeSerializer):
     """
@@ -116,30 +127,7 @@ class _SerializableSerializer(TypeSerializer):
             })
 
 
-class _SerializableMeta(abc.ABCMeta):
-    def __init__(cls, name, bases, dct):
-
-        if cls.from_serializable and not ismethod(cls.from_serializable):
-            raise Exception(
-                f'Did you forget to decorate method \'from_serializable\' from class {cls} with @classmethod?')
-
-        if not ismethod(cls.get_signature):
-            raise Exception(
-                f'Did you forget to decorate method \'get_signature\' from class {cls} with @classmethod?')
-
-        if not isinstance(cls.signature, (str, type(None))):
-            raise Exception(
-                f'Error with \'signature\' property definition for class {cls} : Serializables (unlike TypeSerializers) need a property signature that is a string or None. '
-                'No @property-decorated methods allowed.')
-
-        super().__init__(name, bases, dct)
-
-        # Class creation also registers it automatically (if the class is not abstract).
-        if not isabstract(cls) and cls.register:
-            _SerializableSerializer.create_derived_class(cls)
-
-
-class Serializable(metaclass=_SerializableMeta):
+class Serializable(abc.ABC):
     """
     Base class to make custom classes serializable. Classes deriving from this class are by default automatically registered with :class:`xerializer.Serializer`. Note that :class:`Serializable` uses the same metaclass as :class:`abc.ABC`, so one should not also derive from :class:`abc.ABC` when creating an abstract :class:`Serializable` child class (doing so will result in metclass errors).
     """
@@ -176,3 +164,24 @@ class Serializable(metaclass=_SerializableMeta):
         (See :meth:`TypeSerializer.from_serializable`)
         """
         return cls(**kwargs)
+
+    def __init_subclass__(cls, register_meta=None, **kwargs):
+
+        super().__init_subclass__(**kwargs)
+
+        if cls.from_serializable and not ismethod(cls.from_serializable):
+            raise Exception(
+                f'Did you forget to decorate method \'from_serializable\' from class {cls} with @classmethod?')
+
+        if not ismethod(cls.get_signature):
+            raise Exception(
+                f'Did you forget to decorate method \'get_signature\' from class {cls} with @classmethod?')
+
+        if not isinstance(cls.signature, (str, type(None))):
+            raise Exception(
+                f'Error with \'signature\' property definition for class {cls} : Serializables (unlike TypeSerializers) need a property signature that is a string or None. '
+                'No @property-decorated methods allowed.')
+
+        # Class creation also registers it automatically (if the class is not abstract).
+        if TypeSerializer._decide_register(cls, register_meta):
+            _SerializableSerializer.create_derived_class(cls)

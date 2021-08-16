@@ -20,3 +20,14 @@ def register_custom_serializer(
         _REGISTERED_AS_SERIALIZABLE_PLUGINS.append(type_serializer)
     if from_serializable and type_serializer.from_serializable is not None:
         _REGISTERED_FROM_SERIALIZABLE_PLUGINS.append(type_serializer)
+
+
+def get_registered_serializers(as_types=True):
+    getter = type if as_types else lambda x: x
+    return {'as_serializable': [getter(x) for x in _REGISTERED_AS_SERIALIZABLE_PLUGINS],
+            'from_serializable': [getter(x) for x in _REGISTERED_FROM_SERIALIZABLE_PLUGINS]}
+
+
+def clear_registered_serializers():
+    _REGISTERED_AS_SERIALIZABLE_PLUGINS.clear()
+    _REGISTERED_FROM_SERIALIZABLE_PLUGINS.clear()
