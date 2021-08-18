@@ -1,8 +1,9 @@
 """
 
-.. todo:: Add unit tests to ensure automatic registration mechanism works.
+.. todo::
 
-.. warning:: Both :class:`TypeSerializer` and :class:`Serializable` use the same metaclass as :class:`abc.ABC`. One should hence not also derive from :class:`abc.ABC` when creating an abstract :class:`TypeSerializer` child class. Doing so will result in a metaclass error during class declaration.
+  * Add unit tests to ensure automatic registration mechanism works.
+  * Create an @serializable class decorator that assumes the __init__ function takes only serializables. Arguments in the @serializable can be similar to those in class Serializable.
 
 """
 import abc
