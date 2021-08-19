@@ -161,6 +161,63 @@ For classes that already exist, one can instead create a standalone type seriali
 
     {"__type__": "my_non_serializable_module.MyNonSerializable", "arg1": 1, "arg2": 2}
 
+.. _Serializable decorator:
+
+... with the ``serializable`` class decorator
+=================================================
+
+The module also exposes the :meth:`xerializer.serializable` class decorator that greatly simplifies the process of making custom types serializables for the special case of classes that 
+
+#. are initialized only with serializable arguments and 
+#. have initializer signature that are all introspectable with `inspect.signature <https://docs.python.org/3/library/inspect.html#inspect.signature>`_ -- this includes the vast majority of methods, including those with with ``*args`` and ``**kwargs`` arguments.
+
+Classes decorated with ``@serializable`` will have the ``__init__`` method wrapped in a function that appends an attribute ``_xerializable_params`` to the instantiated object. The decorator can also be used as a stand-alone function to make an existing class serializable -- note that this also modifies the class initializer.
+
+Unlike classes deriving from :class:`xerializer.Serializable`, classes derived from ``@serializable``-decorated classes do not inherit the serializable quality.
+
+
+.. rubric:: Examples
+
+.. testcode::
+
+   from xerializer import Serializer, serializable
+
+   # Using serializable as a decorator.
+   @serializable(signature='MyClass1') #signature optional, fully qualified name by default
+   class MyClass1:
+     def __init__(self, a, b=2):
+       self.a = a
+       self.b = b
+     def __eq__(self, x):
+       return self.a == x.a and self.b == x.b
+
+
+   # Using serializable as a function.
+   class MyClass2(MyClass1): 
+     def __init__(self, a, b=2):
+       self.a = a
+       self.b = b
+   MyClass2 = serializable(explicit_defaults=False, signature='MyClass2')(MyClass2) # Defaults not serialized
+
+   # Verifying serialization
+   srlzr = Serializer()
+
+   mc1 = MyClass1(1)
+   mc1_srlzd = srlzr.serialize(mc1)
+   assert mc1 == srlzr.deserialize(mc1_srlzd)   
+
+   mc2 = MyClass2(3)
+   mc2_srlzd = srlzr.serialize(mc2)
+   assert mc2 == srlzr.deserialize(mc2_srlzd)
+   
+   print(mc1_srlzd)
+   print(mc2_srlzd)
+
+.. testoutput::
+
+   {"__type__": "MyClass1", "a": 1, "b": 2}
+   {"__type__": "MyClass2", "a": 3}
+
 
 Registering custom types
 -------------------------
