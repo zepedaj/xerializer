@@ -66,7 +66,7 @@ def serializable(explicit_defaults: bool = True, signature=None):
     """
     Class decorator that makes the class serializable. See discussion in :ref:`Serializable decorator <Serializable decorator>`.
 
-    :param apply_defaults: [True] Serialize default values explicitly.
+    :param explicit_defaults: [True] Serialize default values explicitly.
     :param signature: The xerializable signature -- a human readable global string specifier for the class. Defaults to the fully-qualified class name.
     """
 

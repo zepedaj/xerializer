@@ -3,83 +3,76 @@ from xerializer.serializer import UnserializableType
 from unittest import TestCase
 
 
-class _T:
-    def __eq__(self, b):
-        return type(self) == type(b) and all((
-            vars(self)[key] == vars(b)[key] for key in vars(self) if key != '_xerializable_params'))
-
-
-@mdl.serializable()
-class A(_T):
-    def __init__(self, a, b, *args, c=100, d=200, **kwargs):
-        self.a = a
-        self.b = b
-        self.args = args
-        self.c = c
-        self.d = d
-        self.kwargs = kwargs
-
-
-@mdl.serializable()
-class B(_T):
-    def __init__(self, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
-
-
-@mdl.serializable()
-class C(_T):
-    def __init__(self, a, b, c=100, d=200):
-        self.a = a
-        self.b = b
-        self.c = c
-        self.d = d
-
-
-@mdl.serializable()
-class D(_T):
-    def __init__(self, a=10, b=20, c=100, d=200):
-        self.a = a
-        self.b = b
-        self.c = c
-        self.d = d
-
-
-class Dchild(D):
-    pass
-
-
-@mdl.serializable()
-class Dchild2(D):
-    pass
-
-
-class Dchild3(D):
-    pass
-
-
-Dchild3 = mdl.serializable()(Dchild3)
-
-
-class E(_T):
-    def __init__(self, a=10, b=20, c=100, d=200):
-        self.a = a
-        self.b = b
-        self.c = c
-        self.d = d
-
-
-E = mdl.serializable()(E)
-
-
-@mdl.serializable()
-class F(_T):
-    pass
-
-
 class TestDecorator(TestCase):
 
     def test_all(self):
+
+        # DEFINE SEVERAL @serializable-decorated classes.
+        class _T:
+            def __eq__(self, b):
+                return type(self) == type(b) and all(
+                    (vars(self)[key] == vars(b)[key] for key in vars(self)
+                     if key != '_xerializable_params'))
+
+        @mdl.serializable()
+        class A(_T):
+            def __init__(self, a, b, *args, c=100, d=200, **kwargs):
+                self.a = a
+                self.b = b
+                self.args = args
+                self.c = c
+                self.d = d
+                self.kwargs = kwargs
+
+        @mdl.serializable()
+        class B(_T):
+            def __init__(self, *args, **kwargs):
+                self.args = args
+                self.kwargs = kwargs
+
+        @mdl.serializable()
+        class C(_T):
+            def __init__(self, a, b, c=100, d=200):
+                self.a = a
+                self.b = b
+                self.c = c
+                self.d = d
+
+        @mdl.serializable()
+        class D(_T):
+            def __init__(self, a=10, b=20, c=100, d=200):
+                self.a = a
+                self.b = b
+                self.c = c
+                self.d = d
+
+        class Dchild(D):
+            pass
+
+        @mdl.serializable()
+        class Dchild2(D):
+            pass
+
+        class Dchild3(D):
+            pass
+
+        Dchild3 = mdl.serializable()(Dchild3)
+
+        class E(_T):
+            def __init__(self, a=10, b=20, c=100, d=200):
+                self.a = a
+                self.b = b
+                self.c = c
+                self.d = d
+
+        E = mdl.serializable()(E)
+
+        @mdl.serializable()
+        class F(_T):
+            pass
+
+        # Serialize these classes.
+        ####################
         srlzr = Serializer()
         for obj in [
                 A(0, 1),
