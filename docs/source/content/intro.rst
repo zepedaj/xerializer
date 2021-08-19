@@ -183,7 +183,8 @@ Unlike classes deriving from :class:`xerializer.Serializable`, classes derived f
    from xerializer import Serializer, serializable
 
    # Using serializable as a decorator.
-   @serializable(signature='MyClass1') #signature optional, fully qualified name by default
+   # 'signature' optional, defaults to fully qualified
+   @serializable(signature='MyClass1') 
    class MyClass1:
      def __init__(self, a, b=2):
        self.a = a
@@ -197,7 +198,8 @@ Unlike classes deriving from :class:`xerializer.Serializable`, classes derived f
      def __init__(self, a, b=2):
        self.a = a
        self.b = b
-   MyClass2 = serializable(explicit_defaults=False, signature='MyClass2')(MyClass2) # Defaults not serialized
+   # explicit_defaults=False -> Defaults not serialized
+   MyClass2 = serializable(explicit_defaults=False, signature='MyClass2')(MyClass2) 
 
    # Verifying serialization
    srlzr = Serializer()
