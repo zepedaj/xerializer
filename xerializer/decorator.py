@@ -116,7 +116,7 @@ def serializable(explicit_defaults: bool = True, signature=None, kwargs_level='a
 
     :param explicit_defaults: [True] Serialize default values explicitly.
     :param signature: [Fully-qualified class name] The xerializable signature -- a human readable global string specifier for the class.
-    :param kwargs_level: ['auto'] Whether to place kwargs (``kwargs_level = 'root'``) at the root level of the serializable or (``kwargs_level='safe'``) within their own field named like the variable keywords parameter of the decorated class's initializer. By default (``kwargs_level = 'auto'``) the root level will be used when possible, and a dedicated level will be used otherwise. See the discussion in XXX.
+    :param kwargs_level: ['auto'] Whether to place kwargs (``kwargs_level = 'root'``) at the root level of the serializable or (``kwargs_level='safe'``) within their own field named like the variable keywords parameter of the decorated class's initializer. By default (``kwargs_level = 'auto'``) the root level will be used when possible, and a dedicated level will be used otherwise. See the discussion in :ref:`Decorator serialization syntax`.
     """
 
     def fxn(obj):

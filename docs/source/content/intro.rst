@@ -195,7 +195,7 @@ Unlike classes deriving from :class:`xerializer.Serializable`, classes derived f
 
    # Using serializable as a function.
    class MyClass2(MyClass1): 
-     def __init__(self, a, b=2):
+     def __init__(self, a, *args, b=2, **kwargs):
        self.a = a
        self.b = b
    # explicit_defaults=False -> Defaults not serialized
@@ -219,6 +219,35 @@ Unlike classes deriving from :class:`xerializer.Serializable`, classes derived f
 
    {"__type__": "MyClass1", "a": 1, "b": 2}
    {"__type__": "MyClass2", "a": 3}
+
+.. _Decorator serialization syntax:
+
+.. rubric:: Decorator serialization syntax
+
+Type serializers generated automatically with the ``@serializable`` decorator will attempt to produce serializations that are compact and human-readable:
+
+.. testcode::
+
+  print(srlzr.serialize(MyClass2(1, 2, 3, b=10, c=20, d=30)))
+
+.. testoutput::
+
+   {"__type__": "MyClass2", "a": 1, "args": [2, 3], "b": 10, "c": 20, "d": 30}
+
+This syntax will create name clashes when one of the variable keywords has the same name ``'args'`` as the variable positional argument ``*args``, a situation that is detected automatically and addressed with a more verbose syntax:
+
+.. testcode::  
+
+  # The keyword 'args' has the same name as the variable positional 
+  # argument '*args' in the signature of MyClass2.__init__
+  print(srlzr.serialize(MyClass2(1, 2, 3, b=10, c=20, d=30, args=40)))
+
+.. testoutput::
+
+   {"__type__": "MyClass2", "a": 1, "args": [2, 3], "b": 10, "kwargs": {"c": 20, "d": 30, "args": 40}}
+
+The :meth:`serializable` decorator takes a ``kwargs_level`` argument that can be used to explicitly choose the more compact syntax (``kwargs_level='root'``) in situations where the user is sure no clashes will occur (detected name clashes will raise an exception). The more verbose but safe syntax can also be set explicitly (``kwargs_level='safe'``). By default, the choice is done automatically on-the-fly (``kwargs_level='auto'``).
+
 
 
 Registering custom types
