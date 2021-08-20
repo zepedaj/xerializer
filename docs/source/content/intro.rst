@@ -59,19 +59,12 @@ Getting started
    
 .. testcode:: get_started
 
+   assert my_object == serializer.deserialize(my_object_str)
    print(my_object_str)   
    
 .. testoutput:: get_started
    
    [{"key1": "val1", "key2": [1, 2, 3]}, {"__type__": "tuple", "value": ["tuple1", "tuple2"]}, {"__type__": "set", "value": ["set1", "set2"]}, {"__type__": "slice", "stop": 30}]   
-
-.. testcode:: get_started
-   
-   print(my_object == serializer.deserialize(my_object_str))
-
-.. testoutput:: get_started
-
-   True
 
 
 Examples of all builtin-types can be found in :ref:`Examples`.
@@ -80,6 +73,8 @@ Examples of all builtin-types can be found in :ref:`Examples`.
 
 Serializing custom types
 ---------------------------
+
+.. todo:: Change intro to reflect ``@serializable`` discussion. Move this discussion to the top of the list.
 
 There are two approaches to support custom types: By having the custom type derive from :class:`~xerializer.Serializable` -- this requires modifying the source code for that class. Or by creating a stand-alone :class:`~xerializer.TypeSerializer` -- a less obtrusive approach.
 
