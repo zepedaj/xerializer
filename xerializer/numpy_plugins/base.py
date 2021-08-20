@@ -92,7 +92,7 @@ class DtypeSerializer(_BuiltinTypeSerializer):
 class NDArrayAsBytesSerializer(_BuiltinTypeSerializer):
 
     handled_type = np.ndarray
-    signature = 'array_as_bytes'
+    signature = 'np.array_as_bytes'
 
     def as_serializable(self, arr):
         from pglib.numpy import encode_ndarray
@@ -105,4 +105,4 @@ class NDArrayAsBytesSerializer(_BuiltinTypeSerializer):
 
 class Datetime64AsBytesSerializer(NDArrayAsBytesSerializer):
     handled_type = np.datetime64
-    signature = 'datetime64_as_bytes'
+    signature = 'np.datetime64_as_bytes'

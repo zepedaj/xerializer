@@ -5,19 +5,25 @@ Motivation
 The serialization protocols implemented by this module have the following aims:
 
 * **Readability** / ease of **manual editing** of serialized format.
-* Ease of **extensibility** with minimal coding overhead - Classes can become serializable by deriving from :class:`~xerializer.Serializable` and implementing :meth:`~xerializer.Serializable.as_serializable` and optionally :meth:`~xerializer.Serializable.from_serializable`.
-* **Code unobstrusiveness** - Custom objects can also be made serializable by instead implementing a stand-alone :class:`~xerializer.TypeSerializer`, setting :attr:`~xerializer.TypeSerializer.handled_type` to the class to make serializable.
-* **Syntax unobtrusiveness** - JSON/YAML-compatible base types (numeric types, ``list``, ``dict``) are converted to serializable objects without any added verbosity `[1] <Syntax Overhead>`_. Custom serializable types are serialized as dictionaries with a ``__type__``.
+* Ease of **extensibility** with minimal coding overhead - Most classes can become serializable simply by decorating them with :class:`@serializable() <xerializer.serializable>`. More flexibility can be obtained by deriving from :class:`~xerializer.Serializable`.
+* **Code unobstrusiveness** - Custom objects can also be made serializable by instead implementing a stand-alone :class:`~xerializer.TypeSerializer`, setting :attr:`~xerializer.TypeSerializer.handled_type` to the class to make serializable -- this approach offers the most flexibility. 
+* **Syntax unobtrusiveness** - JSON/YAML-compatible base types (numeric types, ``str``, ``list``, ``dict``) are converted to serializable objects without any added verbosity :ref:`[1] <Syntax Overhead>`. Custom serializable types are serialized as dictionaries with a ``__type__`` key.
 * **Builtin type** (``tuple``, ``set``, ``slice``) support out-of-the-box.
-* **Numpy** support (``numpy.dtype``,  ``numpy.ndarray``), including (nested and/or shaped) structured dtypes out-of-the-box.
+* **Numpy** support (``numpy.dtype``,  ``numpy.ndarray``, ``numpy.datetime64``), including (nested and/or shaped) structured dtypes out-of-the-box.
 * **Safety** - Only :class:`~xerializer.Serializable` objects or those with a :class:`~xerializer.TypeSerializer` will be deserialized into objects by :class:`~xerializer.Serializer`, and users have fine-grained control of enabled third-party and builtin plugins.
+
+.. todo:: Document numpy support, including the `_as_bytes` options and how to enable them.
 
 Syntax
 ========
-The contents or :attr:`__args__` and :attr:`__kwargs__` can be any serializable type. When pre-fixed by ``'@py:'``, they can also be string representation of standard python objects (``byte``, ``tring``, ``int``, ``float``, ``list``, ``tuple``, ``set``, ``dict``, and any other supported by python's :meth:`ast.literal_eval`).
+
+See :ref:`Examples` for example serializations of various builtin Python types.
+
+.. _Syntax Overhead:
 
 Syntax Overhead
 ================
+
 JSON/YAML-compatible base types are converted to serializable objects without any added verbosity. The exception is dictionaries that contain the key ``__type__``. Such dictionaries are represented in the following more verbose form:
 
 .. code-block::
@@ -166,14 +172,14 @@ For classes that already exist, one can instead create a standalone type seriali
 ... with the ``serializable`` class decorator
 =================================================
 
-The module also exposes the :meth:`xerializer.serializable` class decorator that greatly simplifies the process of making custom types serializables for the special case of classes that 
+The module also exposes an :meth:`@serializable() <xerializer.serializable>` class decorator that greatly simplifies the process of making custom types serializables for the special case of classes that 
 
 #. are initialized only with serializable arguments and 
-#. have initializer signature that are all introspectable with `inspect.signature <https://docs.python.org/3/library/inspect.html#inspect.signature>`_ -- this includes the vast majority of methods, including those with with ``*args`` and ``**kwargs`` arguments.
+#. have initializer signature that are all introspectable with `inspect.signature <https://docs.python.org/3/library/inspect.html#inspect.signature>`_ -- this includes the vast majority of methods, including those with ``*args`` and ``**kwargs`` arguments.
 
-Classes decorated with ``@serializable`` will have the ``__init__`` method wrapped in a function that appends an attribute ``_xerializable_params`` to the instantiated object. The decorator can also be used as a stand-alone function to make an existing class serializable -- note that this also modifies the class initializer.
+Classes decorated with :meth:`@serializable() <xerializer.serializable>` will have the ``__init__`` method wrapped in a function that appends an attribute ``_xerializable_params`` to the instantiated object. The decorator can also be used as a stand-alone function to make an existing class serializable -- note that this also modifies the class initializer and needs to be done before instantiating the class.
 
-Unlike classes deriving from :class:`xerializer.Serializable`, classes derived from ``@serializable``-decorated classes do not inherit the serializable quality.
+Unlike classes deriving from :class:`xerializer.Serializable`, classes derived from :meth:`@serializable() <xerializer.serializable>`-decorated classes do not inherit the serializable quality.
 
 
 .. rubric:: Examples
@@ -184,6 +190,7 @@ Unlike classes deriving from :class:`xerializer.Serializable`, classes derived f
 
    # Using serializable as a decorator.
    # 'signature' optional, defaults to fully qualified
+   # class name.
    @serializable(signature='MyClass1') 
    class MyClass1:
      def __init__(self, a, b=2):
@@ -198,7 +205,8 @@ Unlike classes deriving from :class:`xerializer.Serializable`, classes derived f
      def __init__(self, a, *args, b=2, **kwargs):
        self.a = a
        self.b = b
-   # explicit_defaults=False -> Defaults not serialized
+   # Setting explicit_defaults=False means that defaults such as b=2 are
+   # not serialized. The default is explicit_defaults=True.
    MyClass2 = serializable(explicit_defaults=False, signature='MyClass2')(MyClass2) 
 
    # Verifying serialization
@@ -255,13 +263,13 @@ Registering custom types
 
 By default, all non-abstract class derived from :class:`~xerializer.TypeSerializer` (including those generated automatically for non-abstract :class:`~xerializer.Serializable` derived types, and those decorated with :meth:`~xerializer.serializable`) are automatically registered by module :mod:`xerializer`. This means that any :class:`Serializer` instantiated after their definition will by default include those plugins.
 
-This behavior can be customized (except for the decorator syntax) using class variable ``register`` and metaclass variable ``register_meta``. Both variables can be used when deriving from either :class:`Serializable` or :class:`TypeSerializer`.
+This behavior can be customized (except for the decorator syntax) using class variable ``register`` and metaclass variable ``register_meta``. Both variables can be used when deriving from either :class:`~xerializer.Serializable` or :class:`~xerializer.TypeSerializer`.
 
 
 Using the ``register`` class variable
 ========================================
 	    
-Class variable ``register`` specifies whether a given class and all its derived children classes will be registered:
+Class variable ``register`` specifies whether a given class and all its derived children classes are registered (only non-abstract :class:`~xerializer.Serializable` or :class:`~xerializer.TypeSerializer`-derived classes are registered):
 
 .. testcode:: register,register_meta
 
@@ -281,8 +289,8 @@ Class variable ``register`` specifies whether a given class and all its derived 
    
    class MyTypeSerializer(TypeSerializer):
      """
-     This and all derived classes registered automatically because
-     non-abstract and TypeSerializer.register=True.
+     This and all derived classes are registered automatically because
+     they are non-abstract and TypeSerializer.register=True.
      """     
      handled_type = MyClass
      def as_serializable(self):
@@ -290,8 +298,8 @@ Class variable ``register`` specifies whether a given class and all its derived 
 
    class MyTypeSerializerUnregistered(MyTypeSerializer):
      """
-     This and all derived classes not registered automatically despite
-     non-abstract since register=False.
+     This and all derived classes are not registered automatically despite
+     being non-abstract since register=False.
      """
      register = False
 

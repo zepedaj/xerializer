@@ -107,7 +107,7 @@ class NDArraySerializer(_BuiltinTypeSerializer):
     Numpy array serialization. Supports reading hand-written serializations with implicit dtype (to be deduced by numpy).
     """
 
-    signature = 'array'
+    signature = 'np.array'
     handled_type = np.ndarray
     _dtype_serializer = DtypeSerializer()
 
@@ -127,5 +127,5 @@ class NDArraySerializer(_BuiltinTypeSerializer):
 
 
 class Datetime64Serializer(NDArraySerializer):
-    signature = 'datetime64'
+    signature = 'np.datetime64'
     handled_type = np.datetime64
