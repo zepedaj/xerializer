@@ -246,22 +246,22 @@ This syntax will create name clashes when one of the variable keywords has the s
 
    {"__type__": "MyClass2", "a": 1, "args": [2, 3], "b": 10, "kwargs": {"c": 20, "d": 30, "args": 40}}
 
-The :meth:`serializable` decorator takes a ``kwargs_level`` argument that can be used to explicitly choose the more compact syntax (``kwargs_level='root'``) in situations where the user is sure no clashes will occur (detected name clashes will raise an exception). The more verbose but safe syntax can also be set explicitly (``kwargs_level='safe'``). By default, the choice is done automatically on-the-fly (``kwargs_level='auto'``).
+The :meth:`~xerializer.serializable` decorator takes a ``kwargs_level`` argument that can be used to explicitly choose the more compact syntax (``kwargs_level='root'``) in situations where the user is sure no clashes will occur (detected name clashes will raise an exception). The more verbose but safe syntax can also be set explicitly (``kwargs_level='safe'``). By default, the choice is done automatically on-the-fly (``kwargs_level='auto'``).
 
 
 
 Registering custom types
 -------------------------
 
-By default, all non-abstract class derived from :class:`TypeSerializer` (including those generated automatically for non-abstract :class:`Serilizable` derived types) are automatically registered by module :mod:`xerializer`. This means that any :class:`Serializer` instantiated after their definition will by default include those plugins.
+By default, all non-abstract class derived from :class:`~xerializer.TypeSerializer` (including those generated automatically for non-abstract :class:`~xerializer.Serializable` derived types, and those decorated with :meth:`~xerializer.serializable`) are automatically registered by module :mod:`xerializer`. This means that any :class:`Serializer` instantiated after their definition will by default include those plugins.
 
-This behavior can be customized using class variable ``register`` and metaclass variable ``register_meta``. Both variablesa can be used when deriving from both :class:`Serializable` and :class:`TypeSerializer`.
+This behavior can be customized (except for the decorator syntax) using class variable ``register`` and metaclass variable ``register_meta``. Both variables can be used when deriving from either :class:`Serializable` or :class:`TypeSerializer`.
 
 
 Using the ``register`` class variable
 ========================================
 	    
-The first is boolean class variable ``register``, which specifies whether a given class and all its derived children classes will be registered:
+Class variable ``register`` specifies whether a given class and all its derived children classes will be registered:
 
 .. testcode:: register,register_meta
 
@@ -304,7 +304,7 @@ The first is boolean class variable ``register``, which specifies whether a give
 Using the ``register_meta`` keyword
 ===============================================
 
-The second way to customize class registration is with the metaclass keyword ``register`` which is passed in to the class definition arguments and can be one of ``None, True, False``. If ``None`` (the default), it has no effect. If ``True`` or ``False``, it overrides the ``register`` class variable but only affects the class being defined and not its children:
+Metaclass keyword ``register_meta`` is passed in as a class definition keyword argument and can be one of ``None, True, False``. If ``None`` (the default), it has no effect. If ``True`` or ``False``, it overrides the ``register`` class variable but only affects the class being defined and not its children:
 
 .. testcode:: register_meta
    :hide:
@@ -338,7 +338,7 @@ The second way to customize class registration is with the metaclass keyword ``r
    {'as_serializable': [<class 'MyGrandchildSerializer'>], 'from_serializable': [<class 'MyGrandchildSerializer'>]}
 
 
-Using ``register_meta=True`` is also a good way to debug class registration issues, as it will force class overrides or fail with a descriptive error message:
+Using ``register_meta=True`` is also a good way to debug class registration issues, as it will force class registration or fail with a descriptive error message:
 
 .. testcode:: register_meta
 
