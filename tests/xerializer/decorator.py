@@ -14,7 +14,7 @@ class TestDecorator(TestCase):
                     (vars(self)[key] == vars(b)[key] for key in vars(self)
                      if key != '_xerializable_params'))
 
-        @mdl.serializable()
+        @mdl.serializable(signature='A', explicit_defaults=False)
         class A(_T):
             def __init__(self, a, b, *args, c=100, d=200, **kwargs):
                 self.a = a
@@ -24,7 +24,7 @@ class TestDecorator(TestCase):
                 self.d = d
                 self.kwargs = kwargs
 
-        @mdl.serializable()
+        @mdl.serializable(signature='B')
         class B(_T):
             def __init__(self, *args, **kwargs):
                 self.args = args
@@ -71,9 +71,29 @@ class TestDecorator(TestCase):
         class F(_T):
             pass
 
-        # Serialize these classes.
-        ####################
         srlzr = Serializer()
+
+        # Test compactness of representation
+        # ########################################
+        self.assertEqual(srlzr.as_serializable(A(1, 2, 3, c=3)),
+                         {'__type__': 'A', 'a': 1, 'b': 2, 'args': [3], 'c': 3})
+        self.assertEqual(srlzr.as_serializable(B()),
+                         {'__type__': 'B'})
+        self.assertEqual(srlzr.as_serializable(B(1, 2, 3)),
+                         {'__type__': 'B', 'args': [1, 2, 3]})
+        self.assertEqual(srlzr.as_serializable(B(a=1, b=2, c=3)),
+                         {'__type__': 'B', 'a': 1, 'b': 2, 'c': 3})
+        # Test case when 'args' name crashes with a keyword -- auto.
+        self.assertEqual(srlzr.as_serializable(A(1, 2, 3, c=3, args=5, x=6, y=7)), {
+                         '__type__': 'A', 'a': 1, 'b': 2, 'c': 3, 'args': [3],
+                         'kwargs': {'args': 5, 'x': 6, 'y': 7}})
+        # Test same without crashes -- auto.
+        self.assertEqual(srlzr.as_serializable(A(1, 2, 3, c=3, z=5, x=6, y=7)), {
+                         '__type__': 'A', 'a': 1, 'b': 2, 'c': 3, 'args': [3],
+                         'z': 5, 'x': 6, 'y': 7, 'z': 5})
+
+        # Test equivalence of serialized / deserialized classes.
+        ############################################################
         for obj in [
                 A(0, 1),
                 A(0, 1, e='500'),
