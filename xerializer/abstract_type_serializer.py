@@ -14,6 +14,10 @@ from inspect import isabstract
 from pglib.py import class_name
 
 
+def default_signature(cls):
+    return class_name(cls)
+
+
 class TypeSerializer(abc.ABC):
     """
     Generic object serializer. A target class to serialize can inherit form this class or be handled with a standalone class that implements this interface. In the second case, class method :meth:`check_type` needs to be overloaded.
@@ -48,7 +52,7 @@ class TypeSerializer(abc.ABC):
         """
         Property containing the string used in the :attr:`__type__` field of the serializable object. This can be any string. By default it is the fully-qualified name of the handled type.
         """
-        return class_name(self.handled_type)
+        return default_signature(self.handled_type)
 
     @property
     @abc.abstractmethod
@@ -148,7 +152,7 @@ class Serializable(abc.ABC):
         """
         Classmethod returning the signature for the class. Returns :attr:`signature` or the fully-qualified name of the class.
         """
-        return cls.signature or class_name(cls)
+        return cls.signature or default_signature(cls)
 
     @abc.abstractmethod
     def as_serializable(self) -> Dict[str, Any]:
