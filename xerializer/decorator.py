@@ -12,8 +12,8 @@ def _serializable_init_wrapper(cls_init, apply_defaults):
         bound = sgntr.bind(self, *args, **kwargs)
         if apply_defaults:
             bound.apply_defaults()
-        cls_init(self, *args, **kwargs)
         self._xerializable_params = {'sgntr': sgntr, 'bound': bound}
+        cls_init(self, *args, **kwargs)
 
     return wrapper
 
