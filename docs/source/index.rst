@@ -12,7 +12,7 @@ Xerializer: E\ **X**\ tensible S\ **erializer**
    content/intro.rst
    content/_auto/examples.rst
    content/modules
-   content/todo_list
+   content/todo
    
 
 Indices and tables
