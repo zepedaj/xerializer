@@ -21,9 +21,9 @@ class ExtensionMissing(TypeError):
 
 
 class UnserializableType(TypeError):
-    def __init__(self, in_type):
+    def __init__(self, in_obj):
         super().__init__(
-            f"Type {in_type} cannot be serialized by the installed extensions.")
+            f"Object {in_obj} of type {type(in_obj)} cannot be serialized by the installed extensions.")
 
 
 class Serializer:
@@ -115,9 +115,12 @@ class Serializer:
             try:
                 type_serializer = self.as_serializable_plugins[type(obj)]
             except KeyError:
-                raise UnserializableType(type(obj))
+                raise UnserializableType(obj)
             else:
                 return type_serializer._build_typed_dict(obj, self.as_serializable)
+
+    def is_serializable(self, obj):
+        return type(obj) in self.as_serializable_plugins
 
     def from_serializable(self, obj):
 
