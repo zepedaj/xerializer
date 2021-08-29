@@ -168,7 +168,10 @@ class Serializable(abc.ABC):
 
         (See :meth:`TypeSerializer.from_serializable`)
         """
-        return cls(**kwargs)
+        try:
+            return cls(**kwargs)
+        except Exception as error:
+            raise Exception(f'Failed deserializing type {cls} ({error}). See above error.')
 
     def __init_subclass__(cls, register_meta=None, **kwargs):
 
