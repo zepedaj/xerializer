@@ -116,7 +116,7 @@ def serializable(explicit_defaults: bool = True, signature=None, kwargs_level='a
 
     Decorator that makes a class serializable, or a callable (include class methods) de-serializable.
 
-    .. note:: Class methods need to have the ``@serializable`` decorator outside the ``@classmethod`` decorator to avoid a ``TypeError: [classmethod name] missing 1 required position argument: '[class argument name]'`` error.
+    .. note:: Class methods need to have the ``@serializable`` decorator outside the ``@classmethod`` decorator to avoid a ``TypeError: [classmethod name] missing 1 required position argument: '[class argument name]'`` error. The same restriction does not apply to ``@staticmethod``-decorated methods.
 
     .. todo:: Add examples for callables in intro, including functions, bound classmethods and instance methods.
 
@@ -146,7 +146,7 @@ def serializable(explicit_defaults: bool = True, signature=None, kwargs_level='a
                 functools.wraps(obj)(staticmethod(obj)), **attributes)
             return obj
 
-        elif isinstance(obj, classmethod):
+        elif isinstance(obj, (classmethod, staticmethod)):
             # @classmethod serializable
             return _serializable_classmethod(signature=signature)(obj)
 
@@ -172,8 +172,8 @@ class _serializable_classmethod:
     def __set_name__(self, owner, name):
 
         setattr(owner, name, self.fn)  # Binding happens here.
-        bound_classmethod = getattr(owner, name)
-        obj = bound_classmethod
+        bound_method = getattr(owner, name)
+        obj = bound_method
 
         attributes = {'signature': self.signature or entity_name(obj)}
         _DecoratedCallableDeserializer.create_derived_class(

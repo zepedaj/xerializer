@@ -172,6 +172,11 @@ class TestDecorator(TestCase):
             @mdl.serializable()
             @classmethod
             def cm3(cls, a, b, *args, c=1, d=2, **kwargs):
+                return cls, a, b, args, c, d, kwargs
+
+            @mdl.serializable()
+            @staticmethod
+            def sm3(a, b, *args, c=1, d=2, **kwargs):
                 return a, b, args, c, d, kwargs
 
         ###########
@@ -205,6 +210,10 @@ class TestDecorator(TestCase):
                 #
                 (A.cm3(1, 2, 3, c=4, d=5, e=6),
                  {'__type__': entity_name(A.cm3),
+                  'a': 1, 'b': 2, 'args': [3], 'c':4, 'd':5, 'e':6}),
+                #
+                (A.sm3(1, 2, 3, c=4, d=5, e=6),
+                 {'__type__': entity_name(A.sm3),
                   'a': 1, 'b': 2, 'args': [3], 'c':4, 'd':5, 'e':6}),
 
         ]:
