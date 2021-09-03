@@ -74,6 +74,14 @@ class TestDecorator(TestCase):
 
         srlzr = Serializer()
 
+        # Check signatures
+        self.assertEqual(
+            srlzr.get_signature(A),
+            'A')
+        self.assertEqual(
+            srlzr.get_signature(C),
+            'tests.xerializer.decorator:TestDecorator.test_objects.<locals>.C')
+
         # Test compactness of representation
         # ########################################
         self.assertEqual(srlzr.as_serializable(A(1, 2, 3, c=3)),
@@ -181,6 +189,11 @@ class TestDecorator(TestCase):
 
         ###########
         serializer = Serializer()
+
+        # Check signatures
+        self.assertEqual(
+            serializer.get_signature(A.im3),
+            'tests.xerializer.decorator:TestDecorator.test_callables.<locals>.A.im3')
 
         for val, srlzbl in [
                 (fxn1(1, 2),

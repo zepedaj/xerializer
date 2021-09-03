@@ -11,11 +11,11 @@ from inspect import ismethod
 from typing import Dict, Any
 from ._registered import register_custom_serializer
 from inspect import isabstract
-from pglib.py import class_name
+from pglib.py import entity_name
 
 
 def default_signature(cls):
-    return class_name(cls)
+    return entity_name(cls)
 
 
 class TypeSerializer(abc.ABC):

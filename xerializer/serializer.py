@@ -150,6 +150,15 @@ class Serializer:
         else:
             raise TypeError(f'Invalid input of type {type(obj)}.')
 
+    def get_signature(self, entity):
+        """
+        Returns the signature for the specified class.
+        """
+        for key, val in self.from_serializable_plugins.items():
+            if val.handled_type == entity:
+                return key
+        raise Exception(f'Entity {entity} cannot be serialized by the installed extensions.')
+
     def serialize(self, obj, *args, **kwargs):
         return json.dumps(self.as_serializable(obj), *args, **kwargs)
 
