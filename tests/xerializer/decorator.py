@@ -1,11 +1,12 @@
 from xerializer import decorator as mdl, Serializer
+from pglib.py import entity_name
 from xerializer.serializer import UnserializableType
 from unittest import TestCase
 
 
 class TestDecorator(TestCase):
 
-    def test_all(self):
+    def test_objects(self):
 
         # DEFINE SEVERAL @serializable-decorated classes.
         class _T:
@@ -120,3 +121,91 @@ class TestDecorator(TestCase):
 
         with self.assertRaises(UnserializableType):
             srlzr.serialize(Dchild())
+
+    def test_callables(self):
+
+        ##########
+        @mdl.serializable()
+        def fxn1(a, b):
+            return (a, b)
+
+        @mdl.serializable()
+        def fxn2(*args, **kwargs):
+            return args, kwargs
+
+        @mdl.serializable()
+        def fxn3(a, b, *args, c=1, d=2, **kwargs):
+            return a, b, args, c, d, kwargs
+
+        @mdl.serializable()
+        class A:
+
+            def __init__(self, a, b):
+                self.a = a
+                self.b = b
+
+            def __eq__(self, v):
+                return self.a == v.a and self.b == v.b
+
+            # @mdl.serializable()
+            # def im1(self, a, b):
+            #     return (self, a, b)
+
+            # @mdl.serializable()
+            # @classmethod
+            # def cm1(cls, a, b):
+            #     return (a, b)
+
+            # @mdl.serializable()
+            # def im2(self, *args, **kwargs):
+            #     return self, args, kwargs
+
+            # @mdl.serializable()
+            # @classmethod
+            # def cm2(cls, *args, **kwargs):
+            #     return args, kwargs
+
+            @mdl.serializable()
+            def im3(self, a, b, *args, c=1, d=2, **kwargs):
+                return self, a, b, args, c, d, kwargs
+
+            @mdl.serializable()
+            @classmethod
+            def cm3(cls, a, b, *args, c=1, d=2, **kwargs):
+                return a, b, args, c, d, kwargs
+
+        ###########
+        serializer = Serializer()
+
+        for val, srlzbl in [
+                (fxn1(1, 2),
+                 {'__type__': entity_name(fxn1),
+                  'a': 1, 'b': 2}),
+                #
+                (fxn2(1, 2),
+                 {'__type__': entity_name(fxn2),
+                  'args': [1, 2]}),
+                #
+                (fxn2(1, 2, c=3),
+                 {'__type__': entity_name(fxn2),
+                  'args': [1, 2], 'c':3}),
+                #
+                (fxn2(1, 2, kwargs=3),
+                 {'__type__': entity_name(fxn2),
+                  'args': [1, 2], 'kwargs':{'kwargs': 3}}),
+                #
+                (fxn3(1, 2, 3, c=4, d=5, e=6),
+                 {'__type__': entity_name(fxn3),
+                  'a': 1, 'b': 2, 'args': [3], 'c':4, 'd':5, 'e':6}),
+                #
+                # For instance methods to work, from_serializable should take kwargs instead of **kwargs -- otherwise 'self' gets passed twice.
+                # (A(10, 20).im1(1, 2),
+                #  {'__type__': entity_name(A.im1),
+                #   'self': serializer.as_serializable(A(10, 20)), 'a': 1, 'b': 2}),
+                #
+                (A.cm3(1, 2, 3, c=4, d=5, e=6),
+                 {'__type__': entity_name(A.cm3),
+                  'a': 1, 'b': 2, 'args': [3], 'c':4, 'd':5, 'e':6}),
+
+        ]:
+            self.assertEqual(val, serializer.from_serializable(srlzbl))

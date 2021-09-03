@@ -2,6 +2,7 @@ import functools
 from .abstract_type_serializer import TypeSerializer as _TypeSerializer
 import inspect
 from pglib.validation import checked_get_single
+from pglib.py import entity_name
 
 
 def _serializable_init_wrapper(cls_init, apply_defaults):
@@ -75,7 +76,7 @@ class _DecoratedTypeSerializer(_TypeSerializer):
         return dict(out)
 
     def from_serializable(self, **kwargs):
-        sgntr = inspect.signature(self.handled_type.__init__)
+        sgntr = inspect.signature(self.handled_type)
 
         # Collect VAR_KEYWORD args
         if self.kwargs_level in ['auto', 'root'] and (var_kw_param := [
@@ -87,14 +88,14 @@ class _DecoratedTypeSerializer(_TypeSerializer):
             var_keywords = None
 
         # Bind parameters
-        params = sgntr.bind_partial(None)  # Temporarily set self
+        params = sgntr.bind_partial()  # (None)  # Temporarily set self
         params.arguments.update(kwargs)
         if var_keywords:
             params.arguments.setdefault(var_kw_param[0].name, {}).update(
                 var_keywords)
 
         # Return instantiated object.
-        return self.handled_type(*params.args[1:], **params.kwargs)
+        return self.handled_type(*params.args, **params.kwargs)
 
     @classmethod
     def create_derived_class(cls, handled_type, name=None, **attributes):
@@ -112,7 +113,14 @@ class _DecoratedTypeSerializer(_TypeSerializer):
 
 def serializable(explicit_defaults: bool = True, signature=None, kwargs_level='auto'):
     """
-    Class decorator that makes the class serializable. See discussion in :ref:`Serializable decorator <Serializable decorator>`.
+
+    Decorator that makes a class serializable, or a callable (include class methods) de-serializable.
+
+    .. note:: Class methods need to have the ``@serializable`` decorator outside the ``@classmethod`` decorator to avoid a ``TypeError: [classmethod name] missing 1 required position argument: '[class argument name]'`` error.
+
+    .. todo:: Add examples for callables in intro, including functions, bound classmethods and instance methods.
+
+    See discussion in :ref:`Serializable decorator <Serializable decorator>`.
 
     :param explicit_defaults: [True] Serialize default values explicitly.
     :param signature: [Fully-qualified class name] The xerializable signature -- a human readable global string specifier for the class.
@@ -120,15 +128,53 @@ def serializable(explicit_defaults: bool = True, signature=None, kwargs_level='a
     """
 
     def fxn(obj):
-        # Class serializable
+
         if isinstance(obj, type):
+            # Class serializable
             obj.__init__ = _serializable_init_wrapper(
                 obj.__init__, apply_defaults=explicit_defaults)
-            attributes = {'signature': signature} if signature else {}
+            attributes = {'kwargs_level': kwargs_level}
+            if signature:
+                attributes['signature'] = signature
             _DecoratedTypeSerializer.create_derived_class(obj, **attributes)
-        else:
-            raise Exception('Type {type(obj)} not currently supported.')
+            return obj
 
-        return obj
+        elif inspect.isfunction(obj) or inspect.ismethod(obj):
+            # Function and static method serializable
+            attributes = {'signature': signature or entity_name(obj)}
+            _DecoratedCallableDeserializer.create_derived_class(
+                functools.wraps(obj)(staticmethod(obj)), **attributes)
+            return obj
+
+        elif isinstance(obj, classmethod):
+            # @classmethod serializable
+            return _serializable_classmethod(signature=signature)(obj)
+
+        else:
+            raise Exception(f'Type {type(obj)} not currently supported by @serializable decorator.')
 
     return fxn
+
+
+class _DecoratedCallableDeserializer(_DecoratedTypeSerializer):
+    as_serializable = None
+
+
+class _serializable_classmethod:
+
+    def __init__(self, signature=None):
+        self.signature = signature
+
+    def __call__(self, fn):
+        self.fn = fn
+        return self
+
+    def __set_name__(self, owner, name):
+
+        setattr(owner, name, self.fn)  # Binding happens here.
+        bound_classmethod = getattr(owner, name)
+        obj = bound_classmethod
+
+        attributes = {'signature': self.signature or entity_name(obj)}
+        _DecoratedCallableDeserializer.create_derived_class(
+            functools.wraps(obj)(staticmethod(obj)), **attributes)

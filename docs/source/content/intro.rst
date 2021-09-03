@@ -237,6 +237,8 @@ Type serializers generated automatically with the ``@serializable`` decorator wi
 
    {"__type__": "MyClass2", "a": 1, "args": [2, 3], "b": 10, "c": 20, "d": 30}
 
+.. todo:: Won't this clashes also happen if a keyword arg has the name ``kwargs``?
+
 This syntax will create name clashes when one of the variable keywords has the same name ``'args'`` as the variable positional argument ``*args``, a situation that is detected automatically and addressed with a more verbose syntax:
 
 .. testcode::  
