@@ -5,7 +5,10 @@ TODO List
    
    * Add a hydra-like or command-line argument processing extension.
      * Should support creation of meta variables that are not passed to the program: {@meta: {input_dimension: 100}}
-     * Should have an @import command to import configs from other files or variables: {train: {db:{@from:db/, @default:mysql}
+     * Should have an @import command to import configs from other files or variables: {train: {db:{@from:db/, @default:mysql}       
+     * Should support initializing a dictionary form another, with overwrites, e.g., {test@extends(train): {batch_size:10}} (same as @from above?)
+     * Should support escaping so that parsing is not applied to some parts of the file, e.g., {@escape: {@meta:{a:1,@default:2}}}
+     * Supports an @partial value. Objects with this tag will be deserialized to a callable that takes all @partial-labeled values and produces the result. E.g. {'__type__': 'sum', 'a': 1, 'b': @partial}
      * Should support substition using e.g, {{var.x}}
      * Nested variables can be specified using filesystem directories or links within the same file. E.g., train.data@from(data,@global): imagenet should assign to the train.data structure the data.imagenet structure.
      * Supports an @parargs and @prodargs command.
@@ -18,6 +21,7 @@ TODO List
    * Add suport for signatures that are tuples of singatures -- all should be auto-registered.
    * Add support for auto-loading serializers from signature (not safe!!). Maybe not??
    * Add a way to ignore specific parameters in the @serializable decorator. Ignored parameters are not serialized. By default, ignore '_'-prefixed parameters.
+   * Automatically add xerializer signature to docstring.
    * Deploy to github   
 
 
