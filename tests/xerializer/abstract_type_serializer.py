@@ -1,6 +1,8 @@
 from xerializer import abstract_type_serializer as mdl
 from xerializer import _registered
 from unittest import TestCase
+from xerializer.serializer import Serializer
+from xerializer import create_signature_aliases
 import re
 
 
@@ -46,9 +48,12 @@ class TestRegistration(TestCase):
 
         # De-serialization only derived class.
         class MyTypeSerializer(mdl.TypeSerializer):
+            signature = 'my_type'
             handled_type = str
 
             as_serializable = None
+            aliases = ['alias1', 'alias2']
+        create_signature_aliases(MyTypeSerializer().signature, ['alias3', 'alias4'])
 
         self.assertEqual(_as_registered(), _as_list)
         self.assertEqual(_from_registered(), _from_list := (_from_list + [MyTypeSerializer]))
@@ -74,3 +79,10 @@ class TestRegistration(TestCase):
             _as_list + [MyTypeSerializerChild2, MyTypeSerializerChild4]))
         self.assertEqual(_from_registered(), _from_list := (
             _from_list + [MyTypeSerializerChild2, MyTypeSerializerChild4]))
+
+        # Test signature aliases
+        srlzr = Serializer()
+        for signature in [MyTypeSerializer().signature, 'alias1', 'alias2', 'alias3', 'alias4']:
+            self.assertIsInstance(
+                srlzr.from_serializable(
+                    {'__type__': signature}), MyTypeSerializer.handled_type)

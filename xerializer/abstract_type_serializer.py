@@ -7,11 +7,11 @@
 
 """
 import abc
-from inspect import ismethod
-from typing import Dict, Any
-from ._registered import register_custom_serializer
-from inspect import isabstract
 from pglib.py import entity_name
+from inspect import isabstract
+from ._registered import register_custom_serializer
+from typing import Dict, Any, Optional, List
+from inspect import ismethod
 
 
 def default_signature(cls):
@@ -23,10 +23,18 @@ class TypeSerializer(abc.ABC):
     Generic object serializer. A target class to serialize can inherit form this class or be handled with a standalone class that implements this interface. In the second case, class method :meth:`check_type` needs to be overloaded.
     """
 
-    register = True
+    register: bool = True
     """
     Whether to automatically register this class with :class:`~xerializer.Serializer`. Defaults to True.
     """
+
+    aliases: Optional[List[str]] = None
+    """
+    A list of alternate signatures that this :class:`TypeSerializer` also handles. These can be modified before instantiating any :class:`Serializer`.
+    """
+
+    def __init__(self):
+        self.aliases = list(self.aliases or [])
 
     def _build_typed_dict(self, obj, as_serializable):
         kwargs = self.as_serializable(obj)

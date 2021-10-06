@@ -97,9 +97,10 @@ class Serializer:
                 _x.handled_type: _x for _x in plugin_group['as_serializable']
                 if _x.as_serializable})
 
-            self.from_serializable_plugins.update({
-                _x.signature: _x for _x in plugin_group['from_serializable']
-                if _x.from_serializable})
+            for _x in plugin_group['from_serializable']:
+                self.from_serializable_plugins[_x.signature] = _x
+                self.from_serializable_plugins.update({
+                    _alias: _x for _alias in _x.aliases or []})
 
     def as_serializable(self, obj):
 

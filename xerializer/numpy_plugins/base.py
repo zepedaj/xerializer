@@ -47,6 +47,7 @@ class DtypeSerializer(_BuiltinTypeSerializer):
 
     def __init__(self, sanitize=True):
         self.sanitize = sanitize
+        super().__init__()
 
     @classmethod
     def as_nested_lists(cls, dtype, depth=0):

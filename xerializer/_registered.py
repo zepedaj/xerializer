@@ -1,3 +1,6 @@
+from pglib.validation import checked_get_unique
+from typing import Union, List
+
 _REGISTERED_AS_SERIALIZABLE_PLUGINS = []
 _REGISTERED_FROM_SERIALIZABLE_PLUGINS = []
 """
@@ -20,6 +23,22 @@ def register_custom_serializer(
         _REGISTERED_AS_SERIALIZABLE_PLUGINS.append(type_serializer)
     if from_serializable and type_serializer.from_serializable is not None:
         _REGISTERED_FROM_SERIALIZABLE_PLUGINS.append(type_serializer)
+
+
+def create_signature_aliases(
+        signature: str,
+        aliases: Union[List[str], str]):
+    """
+    Creates a signature aliases for deserialization functionality. Alternatively, aliases can be appended directly to :attr:`TypeSerializer.aliases`.
+
+    :param signature: The signature of the type already registered.
+    :param alias: The new signature (or list of signatures) to associate to the serializer. The original signature will still be valid.
+    """
+    type_serializer = checked_get_unique(list(filter(
+        lambda x: x.signature == signature, _REGISTERED_FROM_SERIALIZABLE_PLUGINS)))
+    aliases = [aliases] if isinstance(aliases, str) else aliases
+    for _al in aliases:
+        type_serializer.aliases.append(_al)
 
 
 def get_registered_serializers(as_types=True):
