@@ -231,3 +231,34 @@ class TestDecorator(TestCase):
 
         ]:
             self.assertEqual(val, serializer.from_serializable(srlzbl))
+
+    def test_inheritance(self):
+
+        @mdl.serializable()
+        class A:
+            def __init__(self, a, b, c):
+                self.a = a
+                self.b = b
+                self.c = c
+
+            def __eq__(self, x):
+                vars0 = {_key: _val for _key, _val in
+                         vars(x).items() if _key[0] != '_'}
+                vars1 = {_key: _val for _key, _val in
+                         vars(self).items() if _key[0] != '_'}
+                return vars0 == vars1
+
+        @mdl.serializable()
+        class B(A):
+            def __init__(self, d, e, f, *args, **kwargs):
+                self.d = d
+                self.e = e
+                self.f = f
+                super().__init__(*args, **kwargs)
+
+        srlzr = Serializer()
+        obj_b = B(4, 5, 6, 1, 2, 3)
+
+        self.assertEqual(
+            srlzr.deserialize(srlzr.serialize(obj_b)),
+            obj_b)

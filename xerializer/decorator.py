@@ -10,10 +10,12 @@ def _serializable_init_wrapper(cls_init, apply_defaults):
     @functools.wraps(cls_init)
     def wrapper(self, *args, **kwargs):
         sgntr = inspect.signature(cls_init)
-        bound = sgntr.bind(self, *args, **kwargs)
-        if apply_defaults:
-            bound.apply_defaults()
-        self._xerializable_params = {'sgntr': sgntr, 'bound': bound}
+        if not hasattr(self, '_xerializable_params'):
+            # Will only execute for the child-most class.
+            bound = sgntr.bind(self, *args, **kwargs)
+            if apply_defaults:
+                bound.apply_defaults()
+            self._xerializable_params = {'sgntr': sgntr, 'bound': bound}
         cls_init(self, *args, **kwargs)
 
     return wrapper
