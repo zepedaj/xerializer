@@ -12,7 +12,7 @@ class TestFunctions(TestCase):
         with TemporaryDirectory() as temp_dir:
 
             temp_dir = Path(temp_dir)
-            root = Path(__file__).parent / 'cli_builder_helpers'
+            root = Path(__file__).parent / '_cli_builder_helpers'
 
             # Check that output file does not exist.
             with open(root / 'config.yaml') as fo:
@@ -21,7 +21,7 @@ class TestFunctions(TestCase):
 
             completed = subp.run(
                 ['python',
-                 root / '_cli.py',
+                 root / 'cli.py',
                  root / 'config.yaml',
                  temp_dir])
             completed.check_returncode()

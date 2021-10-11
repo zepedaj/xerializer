@@ -10,7 +10,9 @@ from .serializer import Serializer
 from ._registered import (register_custom_serializer, get_registered_serializers,
                           clear_registered_serializers, create_signature_aliases)
 from .decorator import serializable
+from .cli_builder import hydra_cli
 
 __all__ = ['Serializer', 'Literal', 'TypeSerializer', 'Serializable', 'serializable',
            'default_signature', 'register_custom_serializer', 'get_registered_serializers',
-           'clear_registered_serializers', 'create_signature_aliases']
+           'clear_registered_serializers', 'create_signature_aliases',
+           'hydra_cli']

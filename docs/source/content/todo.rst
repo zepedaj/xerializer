@@ -27,10 +27,10 @@ TODO List
 
 Possible syntaxes:
 
-.. code-block:: yaml
+.. code-block:: 
    
    {@meta: {input_dimension: 100, randomization: True}}
 
    {train: {db:{@from:db/, @default:mysql}
 
-   db/ to define a path, db to define a variable in the file. Or db for both, and give precedence to local vars and then file system.
+db/ to define a path, db to define a variable in the file. Or db for both, and give precedence to local vars and then file system.
