@@ -4,21 +4,22 @@ from importlib import import_module
 import sys
 import argparse
 import hydra
-from typing import Callable, Optional
+from typing import Callable, Optional, List
 from pathlib import Path
 from xerializer import Serializer
 from omegaconf import DictConfig, OmegaConf
 from frozendict import frozendict
+from pglib.argparse import Argument
 
-ARGPARSE_ARGUMENT_MODULES = frozendict({
-    'name': '--modules',
-    'help': ("A list of comma-separated modules (e.g., `--modules='my.module1, my.module2'`, "
-             "whitespace optional) to load. This can be used e.g., to register "
-             "xerializable types."),
-    'nargs': 1})
+ARGPARSE_ARGUMENT_MODULES = Argument(
+    '--modules',
+    help=("A list of comma-separated modules (e.g., `--modules='my.module1, my.module2'`, "
+          "whitespace optional) to load. This can be used e.g., to register "
+          "xerializable types."),
+    nargs=1)
 
 
-def _deserialize_hydra(fxn, expected_type=None, serializer=None):
+def _deserialize_hydra(fxn, expected_type=None, serializer=None, **fxn_kwargs):
     """
     Decorator that maps serializable'd objects to objects in the :class:`omegaconf.DictConfig` input, and calls the child with keyword args derived from the cfg object.
     """
@@ -30,7 +31,7 @@ def _deserialize_hydra(fxn, expected_type=None, serializer=None):
         if expected_type and not isinstance(obj, expected_type):
             raise TypeError(
                 f'Expected {expected_type} but received type-{type(obj)} object {obj}.')
-        fxn(obj)
+        fxn(obj, **fxn_kwargs)
 
     return out_fxn
 
@@ -43,13 +44,15 @@ def hydra_cli(
         worker: Callable,
         expected_type: Optional[type] = None,
         serializer: Optional[Serializer] = None,
-        override_hydra_run_dir=True,
-        override_hydra_logging=True):
+        cli_args: List[Argument] = [],
+        override_hydra_run_dir: bool = True,
+        override_hydra_logging: bool = True):
     """
 
-    :param worker: Callable to execute on the deserialized object.
+    :param worker: Callable to execute on the deserialized object. It will take as parameters the deserialized object received from config file, and all ``cli_args`` as keyword arguments.
     :param expected_type: The expected ``type`` of the serialized object. If provided, receiving an object of a different type will raise an error.
     :param serializer: The serializer to use when deserializing the provided objects. By default, :class:`~xerializer.serializer.Serializer()` will be used with no arguments.
+    :param cli_args: List of extra CLI arguments to accept. These arguments will be passed to the worker function as keyword arguments.
     :param override_hydra_run_dir: If ``True`` (the default), the working directory will be set to the output directory.
     :param override_hydra_logging: If ``True`` (the default), disables Hydra's automatic logging configuration.
 
@@ -116,8 +119,13 @@ def hydra_cli(
     parser.add_argument('output_dir', type=Path,
                         help='Output directory root.')
 
+    # Add extra arguments.
+    worker_kwarg_names = [_arg.bind(parser).dest for _arg in cli_args]
+
     # Comma-separated list of extra modules to load
-    parser.add_argument((param_kws := dict(ARGPARSE_ARGUMENT_MODULES)).pop('name'), **param_kws)
+    ARGPARSE_ARGUMENT_MODULES.bind(parser)
+
+    # Extra hydra parameters.
     parser.add_argument('hydra_overrides', nargs='*')
 
     # Split argparse and hydra arguments
@@ -146,7 +154,9 @@ def hydra_cli(
          if override_hydra_logging else []) +
         parsed_args.hydra_overrides)
 
-    wrapped_call = _deserialize_hydra(worker, expected_type=expected_type, serializer=serializer)
+    wrapped_call = _deserialize_hydra(
+        worker, expected_type=expected_type, serializer=serializer,
+        **{_name: getattr(parsed_args, _name) for _name in worker_kwarg_names})
 
     # Required for config-path trick above to work.
     # Otherwise, hydra assumes the patch is relative to the

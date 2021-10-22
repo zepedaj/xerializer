@@ -1,4 +1,5 @@
 # from torch_train_manager import cli_builder as mdl
+import json
 from unittest import TestCase
 from tempfile import TemporaryDirectory
 from pathlib import Path
@@ -23,8 +24,15 @@ class TestFunctions(TestCase):
                 ['python',
                  root / 'cli.py',
                  root / 'config.yaml',
-                 temp_dir])
+                 temp_dir,
+                 text1 := 'abc',  # text1 is a positional argument
+                 '--text2', text2 := 'def'])
             completed.check_returncode()
 
             # Check that output file exists.
             self.assertTrue(created_file.is_file())
+
+            # Check contents of output file.
+            with open(created_file) as fo:
+                contents = json.load(fo)
+                self.assertEqual(contents, {'text1': text1, 'text2': text2})
