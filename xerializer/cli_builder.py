@@ -42,12 +42,16 @@ def worker(deserialized_object):
 def hydra_cli(
         worker: Callable,
         expected_type: Optional[type] = None,
-        serializer: Optional[Serializer] = None):
+        serializer: Optional[Serializer] = None,
+        override_hydra_run_dir=True,
+        override_hydra_logging=True):
     """
 
     :param worker: Callable to execute on the deserialized object.
     :param expected_type: The expected ``type`` of the serialized object. If provided, receiving an object of a different type will raise an error.
     :param serializer: The serializer to use when deserializing the provided objects. By default, :class:`~xerializer.serializer.Serializer()` will be used with no arguments.
+    :param override_hydra_run_dir: If ``True`` (the default), the working directory will be set to the output directory.
+    :param override_hydra_logging: If ``True`` (the default), disables Hydra's automatic logging configuration.
 
     .. rubric:: CLI Arguments
 
@@ -135,9 +139,12 @@ def hydra_cli(
     sys.argv.clear()
     esc_eq = r'\='
     sys.argv.extend(
-        [arg0,
-         f"hydra.run.dir={str(parsed_args.output_dir.absolute()).replace('=', esc_eq)}", ]
-        + parsed_args.hydra_overrides)
+        [arg0] +
+        ([f"hydra.run.dir={str(parsed_args.output_dir.absolute()).replace('=', esc_eq)}"]
+         if override_hydra_run_dir else []) +
+        (["hydra/job_logging=none", "hydra/hydra_logging=none"]
+         if override_hydra_logging else []) +
+        parsed_args.hydra_overrides)
 
     wrapped_call = _deserialize_hydra(worker, expected_type=expected_type, serializer=serializer)
 
