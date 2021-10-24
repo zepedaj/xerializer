@@ -126,7 +126,8 @@ def hydra_cli(
     ARGPARSE_ARGUMENT_MODULES.bind(parser)
 
     # Extra hydra parameters.
-    parser.add_argument('hydra_overrides', nargs='*')
+    parser.add_argument('hydra_overrides', nargs='*',
+                        help='Configuration file overrides in Hydra syntax.')
 
     # Split argparse and hydra arguments
     parsed_args = parser.parse_args()
