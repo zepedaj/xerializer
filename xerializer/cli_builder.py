@@ -92,7 +92,7 @@ def hydra_cli(
 
       if __name__=='__main__':
          # Argument ``expected_type`` is optional.
-         hydra_cli(add, expected_type=MyClass)
+         hydra_cli(add, expected_type=MyClass)[0]()
 
     You can then invoke that file directly from the command line (requires the ``#!/usr/bin/env python`` shebang as the first line of your file)
 
@@ -166,4 +166,4 @@ def hydra_cli(
 
     return hydra.main(
         config_path=config_path_root,  # Relative to hydra.searchpath, set above.
-        config_name=config_name)(wrapped_call)()
+        config_name=config_name)(wrapped_call), parsed_args
