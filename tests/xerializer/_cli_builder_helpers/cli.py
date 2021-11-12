@@ -14,5 +14,9 @@ class DmyTrainManager:
 
 
 if __name__ == '__main__':
-    cli_builder.hydra_cli(lambda x, **kwargs: x.run(**kwargs),
-                          cli_args=[Argument('text1'), Argument('--text2')])
+    cli_builder.hydra_cli(
+        lambda x, **kwargs: x.run(**kwargs),
+        cli_args=[Argument('text1'),
+                  Argument('--text2'),
+                  Argument('--text3')],
+        excluded_cli_args=['text3'])[0]()

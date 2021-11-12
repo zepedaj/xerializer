@@ -44,7 +44,8 @@ def hydra_cli(
         worker: Callable,
         expected_type: Optional[type] = None,
         serializer: Optional[Serializer] = None,
-        cli_args: List[Argument] = [],
+        cli_args: List[Argument] = None,
+        excluded_cli_args: List[str] = None,
         override_hydra_run_dir: bool = True,
         override_hydra_logging: bool = True):
     """
@@ -53,6 +54,7 @@ def hydra_cli(
     :param expected_type: The expected ``type`` of the serialized object. If provided, receiving an object of a different type will raise an error.
     :param serializer: The serializer to use when deserializing the provided objects. By default, :class:`~xerializer.serializer.Serializer()` will be used with no arguments.
     :param cli_args: List of extra CLI arguments to accept. These arguments will be passed to the worker function as keyword arguments.
+    :param excluded_cli_args: Name of args in ``cli_args`` that will not be passed to the worker but will be returned.
     :param override_hydra_run_dir: If ``True`` (the default), the working directory will be set to the output directory.
     :param override_hydra_logging: If ``True`` (the default), disables Hydra's automatic logging configuration.
 
@@ -119,6 +121,11 @@ def hydra_cli(
     parser.add_argument('output_dir', type=Path,
                         help='Output directory root.')
 
+    # Pre-process extra args.
+    cli_args = cli_args or []
+    excluded_cli_args = excluded_cli_args or []
+    excluded_cli_args = [x.replace('-', '_') for x in excluded_cli_args]
+
     # Add extra arguments.
     worker_kwarg_names = [_arg.bind(parser).dest for _arg in cli_args]
 
@@ -157,7 +164,8 @@ def hydra_cli(
 
     wrapped_call = _deserialize_hydra(
         worker, expected_type=expected_type, serializer=serializer,
-        **{_name: getattr(parsed_args, _name) for _name in worker_kwarg_names})
+        **{_name: getattr(parsed_args, _name) for _name in worker_kwarg_names if
+           _name not in excluded_cli_args})
 
     # Required for config-path trick above to work.
     # Otherwise, hydra assumes the patch is relative to the

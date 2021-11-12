@@ -20,14 +20,14 @@ class TestFunctions(TestCase):
                 created_file = temp_dir / yaml.safe_load(fo.read())['filename']
             self.assertFalse(created_file.is_file())
 
-            completed = subp.run(
+            subp.check_output(
                 ['python',
                  root / 'cli.py',
                  root / 'config.yaml',
                  temp_dir,
                  text1 := 'abc',  # text1 is a positional argument
-                 '--text2', text2 := 'def'])
-            completed.check_returncode()
+                 '--text2', text2 := 'def'],
+                stderr=subp.STDOUT)
 
             # Check that output file exists.
             self.assertTrue(created_file.is_file())
