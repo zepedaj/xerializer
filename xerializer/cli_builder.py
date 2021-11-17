@@ -19,6 +19,12 @@ ARGPARSE_ARGUMENT_MODULES = Argument(
     nargs=1)
 
 
+def import_parser_modules(modules):
+    if modules:
+        [import_module(_module) for _module in
+         map(str.strip, checked_get_single(modules).split(',')) if _module]
+
+
 def _deserialize_hydra(fxn, expected_type=None, serializer=None, **fxn_kwargs):
     """
     Decorator that maps serializable'd objects to objects in the :class:`omegaconf.DictConfig` input, and calls the child with keyword args derived from the cfg object.
@@ -140,9 +146,7 @@ def hydra_cli(
     parsed_args = parser.parse_args()
 
     # Import all extra modules
-    if parsed_args.modules:
-        [import_module(_module) for _module in
-         map(str.strip, checked_get_single(parsed_args.modules).split(',')) if _module]
+    import_parser_modules(parsed_args.modules)
 
     # Build and execute hydra.main()
     config_path = parsed_args.config.absolute()
