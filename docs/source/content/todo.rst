@@ -13,6 +13,7 @@ TODO List
      * Nested variables can be specified using filesystem directories or links within the same file. E.g., train.data@from(data,@global): imagenet should assign to the train.data structure the data.imagenet structure.
      * Supports an @parargs and @prodargs command.
      * Creates and uses a virtual environment with copies of all local modules so that development can continue while training is taking places. When parallelization is used, the copy is the same for all parallel runs in a single job group.
+     * Should support evaluating math expressions.
    * Add the hydra cli module from jzf_train to xerializer       
    * xerializer.abstract_type_serializer -> Rename to xerializer.abstract_types
    * Add the concept of namespaces to manages third-party plugin groups. Make it possible for these to support extending existing namespaces by just having their string name in the list of plugins.
