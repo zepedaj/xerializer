@@ -78,6 +78,7 @@ class _DecoratedTypeSerializer(_TypeSerializer):
         return dict(out)
 
     def from_serializable(self, **kwargs):
+        # TODO: Bug, does not raise an error if kwargs contains invalid argument names
         sgntr = inspect.signature(self.handled_type)
 
         # Collect VAR_KEYWORD args
