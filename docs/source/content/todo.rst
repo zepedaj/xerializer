@@ -15,6 +15,8 @@ TODO List
      * Creates and uses a virtual environment with copies of all local modules so that development can continue while training is taking places. When parallelization is used, the copy is the same for all parallel runs in a single job group.
      * Should support evaluating math expressions.
    * Add the hydra cli module from jzf_train to xerializer       
+   * What happens when a @serializable() classmethod is inherited *with* modifications and *without* modifications?
+   * xerializer.serializable -> Does not fail when extra arguments are passed in.
    * xerializer.abstract_type_serializer -> Rename to xerializer.abstract_types
    * Add the concept of namespaces to manages third-party plugin groups. Make it possible for these to support extending existing namespaces by just having their string name in the list of plugins.
    * Make it possible to call instance methods using the same syntax - problem with ``self`` argument being used by ``Serializer.from_serializable``.
@@ -24,6 +26,7 @@ TODO List
    * Add a way to ignore specific parameters in the @serializable decorator. Ignored parameters are not serialized. By default, ignore '_'-prefixed parameters.
    * Automatically add xerializer signature to docstring.
    * Deploy to github   
+     
 
 
 Possible syntaxes:
