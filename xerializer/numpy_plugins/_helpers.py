@@ -1,4 +1,5 @@
 from numpy.lib.format import dtype_to_descr
+from numpy.lib.recfunctions import repack_fields
 import numpy as np
 
 DT64_AS_STR_DTYPE = 'U30'
@@ -11,6 +12,7 @@ def sanitize_dtype(in_dtype, datetime64_as_string=False):
     kws = {'datetime64_as_string': datetime64_as_string}
     if isinstance(in_dtype, np.dtype):
         # Convert to list of tuples or string.
+        in_dtype = repack_fields(in_dtype)
         return sanitize_dtype(dtype_to_descr(in_dtype), **kws)
     elif isinstance(in_dtype, str):
         # Base types.

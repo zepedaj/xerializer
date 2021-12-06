@@ -7,6 +7,7 @@ from xerializer.abstract_type_serializer import TypeSerializer
 from pglib import numpy as pgnp
 import numpy as np
 import numpy.testing as npt
+from numpy.lib.recfunctions import repack_fields
 
 
 class Mock:
@@ -141,6 +142,17 @@ class TestSerializer(TestCase):
             serialized = srl.serialize(arr)
             self.assertIsInstance(serialized, str)
             npt.assert_equal(arr, dsrlzd := srl.deserialize(serialized))
+
+    def test_dtype_extension(self):
+        all_types = ['f', 'f4', 'u1', 'i', 'L', 'datetime64[D]', 'datetime64[m]']
+        dtype = [(f'f{k}', fld) for k, fld in enumerate(all_types*2)]
+
+        sliced_dtype = np.empty(100, dtype=dtype)[[f'f{k}' for k in range(7)]].dtype
+        srlzr = mdl.Serializer()
+        srlzd_sliced_dtype = srlzr.serialize(sliced_dtype)
+        dsrlzd_sliced_dtype = srlzr.deserialize(srlzd_sliced_dtype)
+
+        self.assertEqual(repack_fields(sliced_dtype), dsrlzd_sliced_dtype)
 
     def test_json_interface(self):
         srl = mdl.Serializer()
