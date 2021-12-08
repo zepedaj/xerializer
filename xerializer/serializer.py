@@ -12,6 +12,7 @@ from pglib.py import filelike_open
 import json
 from ._registered import _REGISTERED_AS_SERIALIZABLE_PLUGINS, _REGISTERED_FROM_SERIALIZABLE_PLUGINS
 from typing import Union
+from . import datetime_plugins  # noqa
 
 
 class ExtensionMissing(TypeError):

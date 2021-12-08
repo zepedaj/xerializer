@@ -1,4 +1,6 @@
 from unittest import TestCase
+import datetime
+import pytz
 from xerializer.builtin_plugins import Literal
 from json import JSONDecodeError
 from tempfile import NamedTemporaryFile
@@ -183,3 +185,17 @@ class TestSerializer(TestCase):
 
             # Serializer.load_safe, returns a boolean empty-file indicator.
             self.assertEqual(srl.load_safe(tmp_fn), (None, 'empty'))
+
+    def test_datetime_plugins(self):
+        # pytz timezones
+        srl = mdl.Serializer()
+        for tz in [pytz.utc, pytz.timezone('US/Eastern')]:
+            self.assertIs(tz, srl.deserialize(srl.serialize(tz)))
+
+        # datetime
+        for x in [
+            # Datetimes
+            datetime.datetime.fromisoformat('2020-10-10T10:10:10.123400'),
+            datetime.datetime.fromisoformat('2020-10-10T10:10:10.123400').replace(tzinfo=pytz.utc)
+        ]:
+            self.assertEqual(x, srl.deserialize(srl.serialize(x)))
