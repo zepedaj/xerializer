@@ -31,6 +31,7 @@ def main(outfile):
                 ('List of base types', "[1, 2.0, 'string']"),
                 ('Dictionary', "{'key1': 'value1', 'key2':0}"),
                 ('Dictionary with \'__type__\' field', "{'key1': 'value1', '__type__':0}"),
+                ('Classes', "dict"),
                 ('Tuples', "(1,'string',3)"),
                 ('Sets', "{1,'string',3}"),
                 ('Slices', "slice(10, 2, -2)"),

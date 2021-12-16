@@ -26,6 +26,9 @@ TODO List
    * Add a way to ignore specific parameters in the @serializable decorator. Ignored parameters are not serialized. By default, ignore '_'-prefixed parameters.
    * Automatically add xerializer signature to docstring.
    * Deploy to github   
+   * @serializable classmethods should still be serializable in their child classes.
+   * Allow serialization where paths are relative to the file where the serializable is stored.
+   * Allow partial deserialization, where un-registered objects do not raise an exception but rather return a special object (e.g., an object of a new `UnregisteredObjet` type). Can be used e.g., to determined which module to load.
      
 
 

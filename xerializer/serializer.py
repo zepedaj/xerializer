@@ -68,7 +68,8 @@ class Serializer:
         all_plugins['plugins'] = plugins or []
 
         all_plugins['builtin'] = ([getattr(builtin_plugins_module, name)() for name in [
-            'DictSerializer', 'ListDeSerializer', 'TupleSerializer', 'SetSerializer', 'SliceSerializer', 'BytesSerializer'
+            'DictSerializer', 'ListDeSerializer', 'TupleSerializer', 'SetSerializer',
+            'SliceSerializer', 'BytesSerializer', 'ClassSerializer'
         ]] + [_SerializableSerializer.create_derived_class(builtin_plugins_module.Literal)()
               ]) if 'builtin' in precedence else []
 

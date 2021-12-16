@@ -1,4 +1,5 @@
 from .abstract_type_serializer import TypeSerializer, Serializable
+from pglib.py import entity_name, entity_from_name
 import base64
 from ast import literal_eval
 
@@ -185,3 +186,18 @@ class BytesSerializer(_BuiltinTypeSerializer):
 
     def from_serializable(self, value):
         return base64.b64decode(value.encode('ascii'))
+
+
+class ClassSerializer(_BuiltinTypeSerializer):
+    """
+    Class serialization.
+    """
+
+    handled_type = type
+    signature = 'class'
+
+    def as_serializable(self, obj: type):
+        return {'value': entity_name(obj)}
+
+    def from_serializable(self, value):
+        return entity_from_name(value)
