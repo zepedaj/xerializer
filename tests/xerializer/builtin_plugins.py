@@ -1,5 +1,10 @@
 from xerializer import builtin_plugins as mdl, Serializer
 from unittest import TestCase
+from abc import ABC, ABCMeta
+
+
+class MyABCClass(ABC):
+    pass
 
 
 class TestBuiltinPlugins(TestCase):
@@ -16,7 +21,8 @@ class TestBuiltinPlugins(TestCase):
                     issubclass(srlzr_type, mdl._BuiltinTypeSerializer) and
                     not srlzr_type == mdl._BuiltinTypeSerializer):
                 srlzr = srlzr_type()
-                self.assertEqual(srlzr.signature, srlzr.handled_type.__name__)
+                if srlzr.handled_type not in [ABCMeta, type]:
+                    self.assertEqual(srlzr.signature, srlzr.handled_type.__name__)
                 processed.append(srlzr.signature)
 
         self.assertEqual(len(set(some_expected) - set(processed)), 0)
@@ -28,7 +34,8 @@ class TestBuiltinPlugins(TestCase):
         serializer = Serializer()
 
         for _obj in [
-                b'abcdef'
+                MyABCClass, dict,
+                b'abcdef',
         ]:
             srlzd_obj = serializer.serialize(_obj)
             self.assertIsInstance(srlzd_obj, str)

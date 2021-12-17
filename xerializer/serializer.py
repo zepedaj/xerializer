@@ -2,17 +2,18 @@
 :class:`Serializer` class implementation.
 """
 
-from pglib.validation import check_expected_kwargs
+from inspect import isabstract
 from itertools import chain
 from numbers import Number
-from . import builtin_plugins as builtin_plugins_module
-from .abstract_type_serializer import _SerializableSerializer
-from . import numpy_plugins
+from . import builtin_plugins
+from .numpy_plugins import numpy_serializers, numpy_as_bytes_serializers  # noqa
 from pglib.py import filelike_open
 import json
-from ._registered import _REGISTERED_AS_SERIALIZABLE_PLUGINS, _REGISTERED_FROM_SERIALIZABLE_PLUGINS
-from typing import Union
-from . import datetime_plugins  # noqa
+from ._registered import _THIRD_PARTY_PLUGINS
+from typing import TypeVar, Optional, List, Union
+from types import ModuleType
+from . import datetime_plugins
+from .abstract_type_serializer import TypeSerializer
 
 
 class ExtensionMissing(TypeError):
@@ -27,18 +28,24 @@ class UnserializableType(TypeError):
             f"Object {in_obj} of type {type(in_obj)} cannot be serialized by the installed extensions.")
 
 
+PluginsType = TypeVar(Optional[List[Union[TypeSerializer, ModuleType]]])
+"""
+Can be a ``None`` or a list containing :class:`TypeSerializer` class definitions or their modules.
+"""
+
+
 class Serializer:
     """
     Extension of JSON serializer that also supports objects implementing or being supported by a :class:`~pglib2.abstract_type_serializer.TypeSerializer` interface as well as lists, tuples, sets and dictionaries (with string keys) of such objects. Note that, unlike the default json behavior, :class:`Serializer` preserves types such as tuple and list.
 
     Default extensions include :class:`slice` objects and :class:`numpy.dtype` objects.
     """
-    default_precedence = ('plugins', 'third_party', 'builtin', 'numpy')
 
     def __init__(self,
-                 plugins: Union[list, dict] = None,
-                 precedence=None,
-                 numpy_as_bytes=False):
+                 plugins: PluginsType = None,
+                 builtins: bool = True,
+                 third_party: bool = True,
+                 numpy_as_bytes: bool = False):
         """
         :param plugins: List of unregistered plugins to use as type serializers. Can also be a dictionary with keys 'as_serializable' and 'from_serializable' to specify plugins that will only be used for serialization and deserialization, respectively.
         :param precedence: Plugin order of precedence. Highest order of precedence plugins overwrite those with the same signature or handled type. Should be a list containing all or some of ['builtin', 'numpy', 'plugins', 'third_party']. Excluding elements from this list will also exclude the corresponding group of plugins.
@@ -47,62 +54,36 @@ class Serializer:
         .. todo:: Add tests to ensure precedence mechanism works.
         """
 
-        # Build precedence
-        precedence = self.default_precedence if precedence is None else precedence
-        check_expected_kwargs(self.default_precedence, precedence,
-                              'precedence values', missing_ok=True)
-        precedence = list(chain(*[
-            ['numpy_as_bytes', 'numpy'][::(2*numpy_as_bytes-1)]
-            if _group == 'numpy' else
-            [_group] for _group in precedence]))
+        # Assemble all serializers
+        plugins = plugins or []
+        builtins = [numpy_serializers if not numpy_as_bytes else numpy_as_bytes_serializers,
+                    builtin_plugins, datetime_plugins] if builtins else []
+        third_party = _THIRD_PARTY_PLUGINS if third_party else []
+        all_serializers = [
+            (_x() if isinstance(_x, TypeSerializer) else _x)
+            for _x in self._extract_serializers(builtins + third_party + plugins)]
 
-        # Assemble plugins
-        all_plugins = {}
+        # Register serializers with object
+        self.as_serializable_plugins = {
+            x.handled_type: x for x in all_serializers if x.as_serializable}
+        self.from_serializable_plugins = {
+            _alias: x for x in all_serializers if x.from_serializable
+            for _alias in ([x.signature] + (x.aliases or []))}
 
-        if isinstance(
-                plugins, dict) and not set(
-                plugins.keys()).issubset(
-                ['as_serializable', 'from_serializable']):
-            raise Exception(
-                "Expected plugins to be a list or dictionary with keys from ['as_serializable', 'from_serializable'].")
-        all_plugins['plugins'] = plugins or []
+    @classmethod
+    def _extract_serializers(cls, plugins: PluginsType):
+        """
+        Concatenates all lists in plugins into a single list of classes, expanding modules into their classes of type :class:`TypeSerializer`.
+        """
 
-        all_plugins['builtin'] = ([getattr(builtin_plugins_module, name)() for name in [
-            'DictSerializer', 'ListDeSerializer', 'TupleSerializer', 'SetSerializer',
-            'SliceSerializer', 'BytesSerializer', 'ClassSerializer'
-        ]] + [_SerializableSerializer.create_derived_class(builtin_plugins_module.Literal)()
-              ]) if 'builtin' in precedence else []
-
-        all_plugins['numpy'] = [getattr(numpy_plugins, name)() for name in [
-            'DtypeSerializer', 'NDArraySerializer', 'Datetime64Serializer'
-        ]] if 'numpy' in precedence else []
-
-        all_plugins['numpy_as_bytes'] = [getattr(numpy_plugins, name)() for name in [
-            'NDArrayAsBytesSerializer', 'Datetime64AsBytesSerializer'
-        ]] if 'numpy_as_bytes' in precedence else []
-
-        all_plugins['third_party'] = {
-            'as_serializable': _REGISTERED_AS_SERIALIZABLE_PLUGINS,
-            'from_serializable': _REGISTERED_FROM_SERIALIZABLE_PLUGINS}
-
-        self.as_serializable_plugins = {}
-        self.from_serializable_plugins = {}
-
-        for plugin_group_name in precedence[::-1]:
-
-            plugin_group = all_plugins[plugin_group_name]
-            if isinstance(plugin_group, list):
-                plugin_group = {'as_serializable': plugin_group,
-                                'from_serializable': plugin_group}
-
-            self.as_serializable_plugins.update({
-                _x.handled_type: _x for _x in plugin_group['as_serializable']
-                if _x.as_serializable})
-
-            for _x in plugin_group['from_serializable']:
-                self.from_serializable_plugins[_x.signature] = _x
-                self.from_serializable_plugins.update({
-                    _alias: _x for _alias in _x.aliases or []})
+        return list(chain(*list(
+            # Expand module
+            [_srlzr for _srlzr in vars(_x).values() if isinstance(_srlzr, type)
+             and issubclass(_srlzr, TypeSerializer) and not isabstract(_srlzr)]
+            if isinstance(_x, ModuleType)
+            # Entry is already a TypeSerializer
+            else [_x]
+            for _x in plugins))) if plugins else []
 
     def as_serializable(self, obj):
 

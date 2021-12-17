@@ -2,9 +2,11 @@ from .abstract_type_serializer import TypeSerializer, Serializable
 from pglib.py import entity_name, entity_from_name
 import base64
 from ast import literal_eval
+from abc import ABCMeta
 
 
 class _BuiltinTypeSerializer(TypeSerializer):
+    # Registration  will be done by Serializer.__init__
     register = False
 
     @property
@@ -13,6 +15,7 @@ class _BuiltinTypeSerializer(TypeSerializer):
 
 
 class _BuiltinSerializable(Serializable):
+    # Registration  will be done by Serializer.__init__
     register = False
 
     @classmethod
@@ -33,7 +36,7 @@ class Literal(_BuiltinSerializable):
             self.check()
 
     def __str__(self):
-        return f'Literal({self.as_serializable(self)})'
+        return f'Literal({self.as_serializable()})'
 
     def check(self):
         if (literal_eval(self.encode()) != self.value):
@@ -190,7 +193,7 @@ class BytesSerializer(_BuiltinTypeSerializer):
 
 class ClassSerializer(_BuiltinTypeSerializer):
     """
-    Class serialization.
+    Type serialization.
     """
 
     handled_type = type
@@ -201,3 +204,8 @@ class ClassSerializer(_BuiltinTypeSerializer):
 
     def from_serializable(self, value):
         return entity_from_name(value)
+
+
+class ABCMetaSerializer(ClassSerializer):
+    handled_type = ABCMeta
+    from_serializable = None

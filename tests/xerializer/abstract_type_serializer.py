@@ -7,18 +7,16 @@ import re
 
 
 def _as_registered():
-    return [type(_x) for _x in _registered._REGISTERED_AS_SERIALIZABLE_PLUGINS]
-    return _registered._REGISTERED_AS_SERIALIZABLE_PLUGINS
+    return [type(_x) for _x in _registered._THIRD_PARTY_PLUGINS if _x.as_serializable]
 
 
 def _from_registered():
-    return [type(_x) for _x in _registered._REGISTERED_FROM_SERIALIZABLE_PLUGINS]
+    return [type(_x) for _x in _registered._THIRD_PARTY_PLUGINS if _x.from_serializable]
 
 
 class TestRegistration(TestCase):
     def test_TypeSerializer_registration(self):
-        _registered._REGISTERED_AS_SERIALIZABLE_PLUGINS.clear()
-        _registered._REGISTERED_FROM_SERIALIZABLE_PLUGINS.clear()
+        _registered._THIRD_PARTY_PLUGINS.clear()
 
         # Abstract derived class.
         class MyAbstractTypeSerializer(mdl.TypeSerializer):

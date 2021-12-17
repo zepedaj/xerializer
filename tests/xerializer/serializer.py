@@ -1,6 +1,7 @@
 from unittest import TestCase
 import datetime
 import pytz
+from xerializer import builtin_plugins
 from xerializer.builtin_plugins import Literal
 from json import JSONDecodeError
 from tempfile import NamedTemporaryFile
@@ -37,6 +38,15 @@ class MockSerializer(TypeSerializer):
 
 
 class TestSerializer(TestCase):
+
+    def test_extract_serializers(self):
+
+        expanded_plugins = mdl.Serializer._extract_serializers(
+            [builtin_plugins])
+
+        self.assertTrue({getattr(builtin_plugins, x) for x in [
+            'DictSerializer', 'TupleSerializer', 'SetSerializer', 'ListDeSerializer']}.issubset(
+                expanded_plugins))
 
     def test_default_types(self):
         srl = mdl.Serializer()
