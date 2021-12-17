@@ -47,11 +47,12 @@ class Serializer:
                  third_party: bool = True,
                  numpy_as_bytes: bool = False):
         """
-        :param plugins: List of unregistered plugins to use as type serializers. Can also be a dictionary with keys 'as_serializable' and 'from_serializable' to specify plugins that will only be used for serialization and deserialization, respectively.
-        :param precedence: Plugin order of precedence. Highest order of precedence plugins overwrite those with the same signature or handled type. Should be a list containing all or some of ['builtin', 'numpy', 'plugins', 'third_party']. Excluding elements from this list will also exclude the corresponding group of plugins.
-        :param numpy_as_bytes: Serialize numpy arrays as base64-encoded bytes (more concise, not readable/editable). Requires that 'numpy' be in :attr:`precedence` to have an effect.
+        :param plugins: List of :class:`TypeSerializer` classes or modules containing such classes. Will overwrite any builting serializers managing the same handled type or signature.
+        :param builtins: Whether to include the builtin plugins in the serializer.
+        :param third_party: Whether to include all registered third-party serializers.
+        :param numpy_as_bytes: When ``builtins=True``, setting this to ``True`` will serialize numpy arrays in a more compact byte representation that is not human readable/editable. The default uses a human-readable/editable string representation.
 
-        .. todo:: Add tests to ensure precedence mechanism works.
+        .. todo:: Add tests to ensure plugins override builtins.
         """
 
         # Assemble all serializers

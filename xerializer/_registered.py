@@ -4,9 +4,9 @@ from typing import Union, List
 
 _THIRD_PARTY_PLUGINS = []
 """
-Contains list of external supported types. External modules register their types by appending to this dictionary using :meth:`register_custom_serializer`.
+Contains list of external supported serializers. 
 
-There is no need to manually register modules. All classes that derive from :class:`~xerializer.abstract_type_serializer.TypeSerializer` and `~xerializer.abstract_type_serializer.Serializable` are automatically registered.
+External modules register their types by appending to this dictionary using :meth:`register_custom_serializer`. But there is no need to this manually. All classes that derive from :class:`~xerializer.abstract_type_serializer.TypeSerializer` and `~xerializer.abstract_type_serializer.Serializable` are automatically registered.
 """
 
 
@@ -36,14 +36,3 @@ def create_signature_aliases(
     aliases = [aliases] if isinstance(aliases, str) else aliases
     for _al in aliases:
         type_serializer.aliases.append(_al)
-
-
-# def get_registered_serializers(as_types=True):
-#     getter = type if as_types else lambda x: x
-#     return {'as_serializable': [getter(x) for x in _REGISTERED_AS_SERIALIZABLE_PLUGINS],
-#             'from_serializable': [getter(x) for x in _REGISTERED_FROM_SERIALIZABLE_PLUGINS]}
-
-
-# def clear_registered_serializers():
-#     _REGISTERED_AS_SERIALIZABLE_PLUGINS.clear()
-#     _REGISTERED_FROM_SERIALIZABLE_PLUGINS.clear()
