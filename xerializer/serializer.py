@@ -60,7 +60,7 @@ class Serializer:
                     builtin_plugins, datetime_plugins] if builtins else []
         third_party = _THIRD_PARTY_PLUGINS if third_party else []
         all_serializers = [
-            (_x() if isinstance(_x, TypeSerializer) else _x)
+            _x() if self._is_type_serializer_subclass(_x) else _x
             for _x in self._extract_serializers(builtins + third_party + plugins)]
 
         # Register serializers with object
@@ -71,6 +71,12 @@ class Serializer:
             for _alias in ([x.signature] + (x.aliases or []))}
 
     @classmethod
+    def _is_type_serializer_subclass(cls, _srlzr):
+        return (isinstance(_srlzr, type) and
+                issubclass(_srlzr, TypeSerializer) and
+                not isabstract(_srlzr))
+
+    @classmethod
     def _extract_serializers(cls, plugins: PluginsType):
         """
         Concatenates all lists in plugins into a single list of classes, expanding modules into their classes of type :class:`TypeSerializer`.
@@ -78,10 +84,9 @@ class Serializer:
 
         return list(chain(*list(
             # Expand module
-            [_srlzr for _srlzr in vars(_x).values() if isinstance(_srlzr, type)
-             and issubclass(_srlzr, TypeSerializer) and not isabstract(_srlzr)]
+            [_srlzr for _srlzr in vars(_x).values() if cls._is_type_serializer_subclass(_srlzr)]
             if isinstance(_x, ModuleType)
-            # Entry is already a TypeSerializer
+            # Entry is a TypeSerializer class or some other object
             else [_x]
             for _x in plugins))) if plugins else []
 

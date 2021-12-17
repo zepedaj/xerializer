@@ -1,4 +1,4 @@
-from .abstract_type_serializer import TypeSerializer, Serializable
+from .abstract_type_serializer import TypeSerializer, Serializable, _SerializableSerializer
 from pglib.py import entity_name, entity_from_name
 import base64
 from ast import literal_eval
@@ -59,6 +59,11 @@ class Literal(_BuiltinSerializable):
     @classmethod
     def from_serializable(cls, value):
         return cls.decode(value)
+
+
+class _LiteralSerializer(_SerializableSerializer):
+    handled_type = Literal
+    register = False
 
 
 class DictSerializer(_BuiltinTypeSerializer):

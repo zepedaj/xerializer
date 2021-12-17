@@ -16,7 +16,7 @@ class _PytzTZinfoSerializer:
 
 for _tzname in pytz.all_timezones:
     # Register all pytz timezone classes.
-    type(
+    globals()[_tzname] = type(
         _tzname,
         (_PytzTZinfoSerializer, _BuiltinTypeSerializer),
         {
