@@ -30,12 +30,14 @@ class TestGeneric(TestCase):
         with self.assertRaises(AttributeError):
             dmc.b
         [self.assertEqual(getattr(mc, key), getattr(dmc, key)) for key in ['a']]
+        self.assertIs(dmc.source_class, MyClass)
 
         # With 'include' a
         mdl.register_generic(MyClass, include=['a'])
         srlzr = Serializer()
         dmc = srlzr.deserialize(srlzr.serialize(mc))
         [self.assertEqual(getattr(mc, key), getattr(dmc, key)) for key in ['a', 'b']]
+        self.assertIs(dmc.source_class, MyClass)
 
         # With 'exclude' b
         mdl.register_generic(MyClass, exclude=['b'])
@@ -45,3 +47,4 @@ class TestGeneric(TestCase):
             dmc.a
         with self.assertRaises(AttributeError):
             dmc.b
+        self.assertIs(dmc.source_class, MyClass)
