@@ -52,6 +52,7 @@ class GenericSerializer(TypeSerializer):
             attribs = (
                 set(list(obj.__dict__) + (self.included_attribs or [])) -
                 set(self.excluded_attribs or []))
+        out = {}
         if self.source_class_key is not None:
             out = {self.source_class_key: type(obj)}
         out.update({key: getattr(obj, key) for key in attribs})
