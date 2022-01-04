@@ -96,7 +96,7 @@ class Serializer:
         if isinstance(obj, (Number, str, type(None))):
             # Simple types
             return obj
-        elif isinstance(obj, list):
+        elif type(obj) is list:
             # Lists
             srlzd_obj = [self.as_serializable(_val) for _val in obj]
             return srlzd_obj
