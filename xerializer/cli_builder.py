@@ -155,6 +155,8 @@ def hydra_cli(
     assert config_path.suffix == '.yaml', f'Expected a *.yaml config path, but received a *{config_path.suffix}.'
 
     # Prepare args for hydra.
+    orig_args = list(sys.argv)
+
     arg0 = sys.argv[0]
     sys.argv.clear()
     esc_eq = r'\='
@@ -178,4 +180,4 @@ def hydra_cli(
 
     return hydra.main(
         config_path=config_path_root,  # Relative to hydra.searchpath, set above.
-        config_name=config_name)(wrapped_call), parsed_args
+        config_name=config_name)(wrapped_call), parsed_args, orig_args
