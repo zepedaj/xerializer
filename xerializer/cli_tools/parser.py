@@ -20,23 +20,29 @@ class AutonamePattern:
 
     .. test-code::
 
-      # Simple auto-name pattern
-      sp = AutonamePattern('(?P<tag>Hello)', ['tag'])
+        # Simple auto-name pattern
+        sp = mdl.AutonamePattern('(?P<htag>Hello)', ['htag'])
 
-      # Composed auto-name pattern
-      cp = AutonamePattern('{x}(?P<tag> World)', ['tag'], {'x':sp})
+        # Composed auto-name pattern
+        cp = mdl.AutonamePattern('{x} {x} {x} (?P<wtag>World)', ['wtag'], {'x': sp})
 
-      # Match only the first pattern
-      print(str(sp))
-      assert re.match(sp, 'Hello')
-      print(str(sp))
+        # Match only the first pattern
+        assert sp.view() == (sp0_expected := '(?P<htag_0>Hello)')
+        assert re.match(sp0_actual := str(sp), 'Hello')
+        assert sp0_actual == sp0_expected
 
-      # Match composed pattern
-      print(str(cp))
-      assert re.match(cp, 'Hello World')
-      print(str(sp))
-      print(str(cp))
-
+        # Match composed pattern
+        assert(
+            cp.view() ==
+            (cp0_expected :=
+             '(?P<htag_1>Hello) (?P<htag_2>Hello) (?P<htag_3>Hello) (?P<wtag_0>World)'))
+        assert re.match(
+            cp0_actual := str(cp), 'Hello Hello Hello World')
+        assert cp0_actual == cp0_expected
+        assert sp.view() == '(?P<htag_4>Hello)'
+        assert (
+            cp.view() ==
+            '(?P<htag_4>Hello) (?P<htag_5>Hello) (?P<htag_6>Hello) (?P<wtag_1>World)')
     """
 
     pattern: str
@@ -76,7 +82,9 @@ class AutonamePattern:
             # Replace tags
             out = self.pattern
             for _name in self.names:
-                out = out.replace(f'<{_name}>', f'<{self.next_name(_name)}>')
+                new_name = self.next_name(_name)
+                out = out.replace(f'<{_name}>', f'<{new_name}>')
+                out = out.replace(f'(?P={_name})', f'(?P={new_name})')
 
             # Replace nested patterns
             out = out.format(**self.nested_patterns)
@@ -107,25 +115,27 @@ class pxs:
     # $abc, \\$abc, \\\\$abc.def
     ATTR = f"{_n('slash', EVEN_SLASHES)}\\$(?P<name>{NS_VARNAME})"
 
-    # abc, a\$, \#b, \'a, a\"bc not 'abc', "abc", a'bc, a"bc, a\\$
+    # abc, a\$, \#b, \'a, a\"bc, a\, not 'abc', "abc", a'bc, a"bc, a\\, a,$
     UNQUOTED_LITERAL = (
         '('
         # No spaces, \, $, #, ' or "
-        r'[^\s\\\$\#\'\"]+' '|'
+        r'[^\s\\\$\#\'\"\,]+' '|'
         # A sequence of escape sequences
-        f'({ODD_SLASHES}[\\$\\#\\\'\\"])*'
+        f'({ODD_SLASHES}[\\$\\#\\\'\\"\\,])+'
         ')+'
     )
 
     # 'abc', "a$", '#b', '\#', "abc", not 'abc, abc", a\\$ 'a'bc'
-    QUOTED_LITERAL = f'(?P<q>[\\\'\\"])[^(?P=q)]*(?P=q)'
+    QUOTED_LITERAL = AutonamePattern(f'(?P<q>[\\\'\\"])[^(?P=q)]*(?P=q)', ['q'])
     # $fxnname(arg), $fxnname(arg0, arg1), $fxnname(arg0, ... kwarg0=val0, ...)
     #
 
-    LITERAL = f'({UNQUOTED_LITERAL}|{QUOTED_LITERAL})'
+    LITERAL = AutonamePattern(
+        '({UNQUOTED_LITERAL}|{QUOTED_LITERAL})',
+        {'UNQUOTED_LITERAL': UNQUOTED_LITERAL, 'QUOTED_LITERAL': QUOTED_LITERAL})
 
     # "abc, def, '123' "
-    ARG_LIST = f'({LITERAL}(\\s*,\\s*{LITERAL})*)?'
+    ARG_LIST = AutonamePattern('({LITERAL}(\\s*,\\s*{LITERAL})*)?', {'LITERAL': LITERAL})
 
     FXN_CALL = f'{ATTR}\\(\\)'
 

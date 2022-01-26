@@ -5,7 +5,7 @@ import re
 
 class TestAutonamePattern(TestCase):
 
-    def test_all(self):
+    def test_doc(self):
         # Simple auto-name pattern
         sp = mdl.AutonamePattern('(?P<htag>Hello)', ['htag'])
 
@@ -13,20 +13,21 @@ class TestAutonamePattern(TestCase):
         cp = mdl.AutonamePattern('{x} {x} {x} (?P<wtag>World)', ['wtag'], {'x': sp})
 
         # Match only the first pattern
-        self.assertEqual(sp.view(), sp0_expected := '(?P<htag_0>Hello)')
+        assert sp.view() == (sp0_expected := '(?P<htag_0>Hello)')
         assert re.match(sp0_actual := str(sp), 'Hello')
-        self.assertEqual(sp0_actual, sp0_expected)
+        assert sp0_actual == sp0_expected
 
         # Match composed pattern
-        self.assertEqual(
-            cp.view(), cp0_expected :=
-            '(?P<htag_1>Hello) (?P<htag_2>Hello) (?P<htag_3>Hello) (?P<wtag_0>World)')
+        assert(
+            cp.view() ==
+            (cp0_expected :=
+             '(?P<htag_1>Hello) (?P<htag_2>Hello) (?P<htag_3>Hello) (?P<wtag_0>World)'))
         assert re.match(
             cp0_actual := str(cp), 'Hello Hello Hello World')
-        self.assertEqual(cp0_actual, cp0_expected)
-        self.assertEqual(sp.view(), '(?P<htag_4>Hello)')
-        self.assertEqual(
-            cp.view(),
+        assert cp0_actual == cp0_expected
+        assert sp.view() == '(?P<htag_4>Hello)'
+        assert (
+            cp.view() ==
             '(?P<htag_4>Hello) (?P<htag_5>Hello) (?P<htag_6>Hello) (?P<wtag_1>World)')
 
 
@@ -43,13 +44,13 @@ class TestPxs(TestCase):
                  ('$abc', r'\\$abc', r'\\\\$abc.def', '$abc'),
                  (r'\$abc', r'\\\$abc.def0', '$0abc')),
                 ('UNQUOTED_LITERAL',
-                 ('abc', r'a\$', r'\$b', r'a\#', r'\#b', r'\'a', r'a\"bc'),
-                 ("'abc'", '"abc"', "a'bc", 'a"bc', r'a\\$', r'a b')),
+                 ('abc', r'a\$', r'\$b', r'a\#', r'\#b', r'\'a', r'a\"bc', r'a\,'),
+                 ("'abc'", '"abc"', "a'bc", 'a"bc', r'a\\$', r'a b', r'a,', ',', ',,', '')),
                 ('QUOTED_LITERAL',
                  ("'abc'", '"a$"', "'#b'", "'\\#'", '"abc"', '"ab\"c"'),
-                 ("'abc", 'abc"', 'a\\$' "'a'bc'"))
+                 ("'abc", 'abc"', 'a\\$' "'a'bc'", "")),
         ]:
-            [self.assertTrue(re.match('^'+getattr(mdl.pxs, name)+'$', match))
+            [self.assertTrue(re.match('^'+str(getattr(mdl.pxs, name))+'$', match))
              for match in matches]
-            [self.assertFalse(re.match('^'+getattr(mdl.pxs, name)+'$', non_match))
+            [self.assertFalse(re.match('^'+str(getattr(mdl.pxs, name))+'$', non_match))
              for non_match in non_matches]
