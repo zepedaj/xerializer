@@ -1,10 +1,37 @@
 TODO List
 =========
 
+YAML -> Python -> Resolved -> Xerializer
+
+# Explicit attributes provided
+var1:
+  $value: {'abc': 1}
+  $flags: [meta, required]
+  $type: abc.def:MyClass
+  $cast: int
+  $from_dir: ./subdir # Also $cwd/subdir
+  $choices: []
+  $help: 'Help message.'
+  $name: <By default, holds the key value ('var1' in this case).>
+
+# Only implicit $value field.
+var2: 123
+
+# Reference to another field
+var3: {var1.abc}
+
+# Load file relative to containing file or working dir
+# Implicit '.yaml' extension.
+var3: $load(./subdir/x)
+var4: $load($cwd/config)
+var5: 1+$var2
+  
+	 
+
 .. todo::
    
    * Add a hydra-like or command-line argument processing extension.
-     * Should support creation of meta variables that are not passed to the program: {@meta: {input_dimension: 100}}
+     * Should support creation of meta variables that are not passed to the program: { @meta: {input_dimension: 100}}
      * Should have an @import command to import configs from other files or variables: {train: {db:{@from:db/, @default:mysql}       
      * Should support initializing a dictionary form another, with overwrites, e.g., {test@extends(train): {batch_size:10}} (same as @from above?)
      * Should support escaping so that parsing is not applied to some parts of the file, e.g., {@escape: {@meta:{a:1,@default:2}}}
