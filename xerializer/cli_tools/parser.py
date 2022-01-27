@@ -1,8 +1,8 @@
 import re
-from contextlib import ExitStack, contextmanager
+from contextlib import ExitStack
 from dataclasses import dataclass, field
 from threading import RLock
-from typing import Tuple, Dict
+from typing import Optional, Tuple, Dict
 
 
 def _n(name, expr):
@@ -14,7 +14,7 @@ class AutonamePattern:
     """
     Represents a pattern with named groups that have sequential numbers attached to them as suffixes.
 
-    The pattern can also contain other :class:`AutoName` patterns for substitution.
+    The pattern can also contain other :class:`AutoName` patterns for substitution. The format for other autoname patterns is the same as that for python ``str.format`` syntax (see 'composed auto-name' example below).
 
     .. warning:: Calling the meth:`__str__` method of this object (even implicitly through ``print(obj)``) will modify the object by advancing the counter. This enables support for situations where the same nested pattern is used more than once in the same expression, e.g., ``'{pattern}{pattern}'``
 
@@ -46,8 +46,8 @@ class AutonamePattern:
     """
 
     pattern: str
-    names: Tuple[str]
     nested_patterns: Dict[str, 'AutonamePattern'] = field(default_factory=dict)
+    names: Optional[Tuple[str]] = None
     _k: int = 0
     _lock: RLock = field(default_factory=RLock)
     _frozen: bool = False
@@ -79,12 +79,24 @@ class AutonamePattern:
 
         with self._lock:
 
-            # Replace tags
+            # Replace names in pattern
+            NAMES = (
+                '|'.join(re.escape(x) for x in self.names)
+                if self.names
+                else r'[a-zA-Z]\w*')
+
+            # Substitute groups
             out = self.pattern
-            for _name in self.names:
-                new_name = self.next_name(_name)
-                out = out.replace(f'<{_name}>', f'<{new_name}>')
-                out = out.replace(f'(?P={_name})', f'(?P={new_name})')
+            for GROUP_PREFIX, GROUP_SUFFIX in [
+                    ('(?P<', '>'),  # Replaces (?P<name> by (?P<name_k>
+                    ('(?P=', ')'),  # Replaces (?P=name) by (?P=name_k)
+                    ('(?(', ')'),  # Replaces (?P=name) by (?P=name_k)
+            ]:
+                out = re.sub(
+                    f"(?P<prefix>({pxs.EVEN_SLASHES}|^|[^{pxs.SLASH}]))"
+                    f"{re.escape(GROUP_PREFIX)}(?P<name>{NAMES}){re.escape(GROUP_SUFFIX)}",
+                    lambda x: f"{x['prefix']}{GROUP_PREFIX}{self.next_name(x['name'])}{GROUP_SUFFIX}",
+                    out)
 
             # Replace nested patterns
             out = out.format(**self.nested_patterns)
@@ -102,42 +114,65 @@ class pxs:
     """
 
     # abc0, _abc0 (not 0abc)
-    VARNAME = '[a-zA-Z_]+[a-zA-Z_0-9]*'
+    VARNAME = r'[a-zA-Z_]+\w*'
 
-    # Matches VARNAME's and
+    # Matches VARNAME's and fully qualified versions
     # abc0.def1 (not abc.0abc, abc., abc.def1. )
-    NS_VARNAME = VARNAME + f'(\\.{VARNAME})*(?!\\.)(?![a-zA-Z0-9_])'
+    NS_VARNAME = AutonamePattern(
+        r'{VARNAME}(\.{VARNAME})*(?!\.)(?!\w)', vars())
 
     # \\, \\\\, \\\\\\, not \, \\\
+    SLASH = r'\\'
     EVEN_SLASHES = r'(?<!\\)(\\\\)*'
     ODD_SLASHES = r'\\(\\\\)*'
 
     # $abc, \\$abc, \\\\$abc.def
-    ATTR = f"{_n('slash', EVEN_SLASHES)}\\$(?P<name>{NS_VARNAME})"
+    ATTR = AutonamePattern(
+        r"(?P<slash>{EVEN_SLASHES})\$(?P<name>{NS_VARNAME})", vars())
 
     # abc, a\$, \#b, \'a, a\"bc, a\, not 'abc', "abc", a'bc, a"bc, a\\, a,$
     UNQUOTED_LITERAL = (
         '('
-        # No spaces, \, $, #, ' or "
-        r'[^\s\\\$\#\'\"\,]+' '|'
+        # No un-escaped spaces, $, #, =, ', ", (, ), \
+        '[^' + (_qchars := r'\s\$\#\=\'\"\,\(\)\\' + ']|') +
         # A sequence of escape sequences
-        f'({ODD_SLASHES}[\\$\\#\\\'\\"\\,])+'
+        f'({ODD_SLASHES}[{_qchars}])+'
         ')+'
     )
 
     # 'abc', "a$", '#b', '\#', "abc", not 'abc, abc", a\\$ 'a'bc'
-    QUOTED_LITERAL = AutonamePattern(f'(?P<q>[\\\'\\"])[^(?P=q)]*(?P=q)', ['q'])
+    QUOTED_LITERAL = AutonamePattern(
+        r'(?P<q>[\'\"])('
+        # Non-quote and non slash char
+        r'[^(?P=q)\\]' '|'
+        # Odd-slashes-escaped non-slash char (including quote)
+        '{ODD_SLASHES}[^{SLASH}]' '|'
+        # Even number of slashes
+        '{EVEN_SLASHES}(?!(?P=q))'
+        ')*(?P=q)', vars())
     # $fxnname(arg), $fxnname(arg0, arg1), $fxnname(arg0, ... kwarg0=val0, ...)
     #
 
-    LITERAL = AutonamePattern(
-        '({UNQUOTED_LITERAL}|{QUOTED_LITERAL})',
-        {'UNQUOTED_LITERAL': UNQUOTED_LITERAL, 'QUOTED_LITERAL': QUOTED_LITERAL})
-
+    # A string literal
     # "abc, def, '123' "
-    ARG_LIST = AutonamePattern('({LITERAL}(\\s*,\\s*{LITERAL})*)?', {'LITERAL': LITERAL})
+    LITERAL = AutonamePattern(
+        '({UNQUOTED_LITERAL}|{QUOTED_LITERAL})', vars())
 
-    FXN_CALL = f'{ATTR}\\(\\)'
+    # Arguments in argument lists are interpreted as YAML strings.
+    LITERAL_ARG = AutonamePattern(
+        '(?P<argval>{LITERAL})', vars())
+    ARG_LIST = AutonamePattern(
+        r'({LITERAL_ARG}(\s*,\s*{LITERAL_ARG})*)', vars())
+
+    LITERAL_KWARG = AutonamePattern(
+        r'(?P<kwname>{VARNAME})\s*=\s*(?P<kwval>{LITERAL})', vars())
+    KWARG_LIST = AutonamePattern(
+        ARG_LIST.pattern.format(LITERAL_ARG='{LITERAL_KWARG}'), vars())
+
+    FXN_CALL = AutonamePattern(
+        r'\$(?P<fxn>{NS_VARNAME})\('
+        r'\s*(?P<arg_list>{ARG_LIST})?\s*((?(arg_list),\s*)(?P<kwarg_list>{KWARG_LIST}))?\s*'
+        r'\)', vars())
 
 
 def parse(val: str):

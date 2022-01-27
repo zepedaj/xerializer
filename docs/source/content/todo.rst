@@ -24,7 +24,7 @@ var3: {var1.abc}
 # Implicit '.yaml' extension.
 var3: $load(./subdir/x)
 var4: $load($cwd/config)
-var5: 1+$var2
+var5: $eval(1+$(var2))
   
 	 
 
