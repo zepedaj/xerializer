@@ -97,7 +97,6 @@ class TestPxs(TestCase):
                 ('$add(a,b,c,d=1,b=2)', 'a,b,c', 'd=1,b=2'),
         ]:
             self.assertIsNotNone(match := re.match(pattern, value))
-            breakpoint()
             self.assertEqual(match['arg_list_0'], arg_list)
             self.assertEqual(match['kwarg_list_0'], kwarg_list)
         for value in [
