@@ -28,9 +28,16 @@ PYTHON_PRECISION = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
                     ast.Div: op.truediv, ast.Pow: op.pow, ast.BitXor: op.xor,
                     ast.USub: op.neg}
 
+BUILTIN_SCALAR_TYPES = (
+    'float', 'int', 'bool', 'bytes', 'str')
+BUILTIN_ITERABLE_TYPES = (
+    'list', 'tuple', 'dict', 'set')  # Require __iter__
+"""
+All these types from the ``builtins`` module are supported both as part of expressions and as node modifiers.
+"""
+
 DEFAULT_CONTEXT = {
-    **{key: getattr(builtins, key) for key in [
-        'int', 'float', 'str', 'bytes', 'bool']}
+    **{key: getattr(builtins, key) for key in BUILTIN_SCALAR_TYPES + BUILTIN_ITERABLE_TYPES}
 }
 """
 Contains the default context accessible to parsers.

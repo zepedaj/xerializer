@@ -13,22 +13,48 @@ var1:
   $choices: []
   $help: 'Help message.'
   $name: <By default, holds the key value ('var1' in this case).>
+'abc:$int,$hidden,$fromdir(?,abc/def)' : 1
 
 # Only implicit $value field.
 var2: 123
 
 # Reference to another field
-var3: {var1.abc}
+var3: $(var1.abc)
 
 # Load file relative to containing file or working dir
 # Implicit '.yaml' extension.
 var3: $load(./subdir/x)
 var4: $load($cwd/config)
+
+# Carry out math
 var5: $eval(1+$(var2))
-  
-	 
+
+
+
+### Decorating key nodes, two syntaxes:
+var1:int,${int,hidden,fromdir('abc/def')} : ${abc.def[0]}
+var1:
+  $flags: [
+    int, 
+    hidden, 
+    fromdir('abc/def'), 
+    choices(['subdir1','subdir3'],
+    help('Help message'))]
+  $value: value
 
 .. todo::
+
+   * AST Parser
+     * Extracting/replacing python interpolation from value strings.
+     * Node system - key / value nodes.
+     * Key string interpolation
+     * load, fromdir, other function implementations.
+
+   * Parser
+     * Documentation
+     * Support passing non-string argument value to parent call
+     * Support key strings with type and functions that automatically substitue in the node (or parent node) first argument.
+     * 
    
    * Add a hydra-like or command-line argument processing extension.
      * Should support creation of meta variables that are not passed to the program: { @meta: {input_dimension: 100}}

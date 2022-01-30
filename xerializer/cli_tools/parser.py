@@ -2,12 +2,12 @@
 This parser operates as follows
 
 1. Parse YAML file to container.
-2. For each string in the container, loop:
-  a. Find internal non-nested function call (exit loop if none found).
+2. For each value string in the container: loop:
+  a. Find an internal non-nested function call (exit loop if none found).
   b. Pass each argument value through the YAML pre-processor.
   c. Execute the function with the YAML-parsed values.
-3. If the function string was the entire string, return the function's output.
-4. Otherwise, convert the returned value to a string and insert it in place of the function string.
+3. If the string consisted entirely of a function string, return the function's output.
+4. Otherwise, convert all returned values to function strings and insert them in place of the function string.
 """
 
 import re
@@ -96,6 +96,13 @@ class AutonamePattern:
     def get_derived_tags(cls, base_tag: str, match: re.Match):
         tag_pattern = re.compile(cls.name_builder(base_tag, r'\d+'))
         return [x for x in match.groupdict().keys() if re.fullmatch(tag_pattern, x)]
+
+    @classmethod
+    def get_single(cls, base_tag: str, match: re.Match):
+        """
+        Returns the value of id-suffixed version of ``base_tag``, checking first that a single such tag exists in ``match``.
+        """
+        return match[cls.get_single_tag(base_tag, match)]
 
     @classmethod
     def get_single_tag(cls, base_tag: str, match: re.Match):
@@ -327,13 +334,16 @@ class Parser:
         except KeyError:
             raise KeyError(f'No registered function with name `{name}`.')
 
-    def _replace(self, in_str, match: re.Match, match_val):
+    def _replace(self, in_str, match: re.Match, repl_str):
+        """
+        Replaces the part of ``in_str`` that match was extracted from with ``match_val``.
+        """
         match_len = (span := match.span())[1] - span[0]
         if match_len == len(in_str):
             # Match spans full input string, no casting to string.
-            return match_val
+            return repl_str
         else:
-            return f'{in_str[:span[0]]}{match_val}{in_str[span[1]:]}'
+            return f'{in_str[:span[0]]}{repl_str}{in_str[span[1]:]}'
 
     def parse(self, val: str) -> Any:
         """
