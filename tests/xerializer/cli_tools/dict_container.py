@@ -1,4 +1,4 @@
-from xerializer.cli_tools import node as mdl
+from xerializer.cli_tools import dict_container as mdl
 
 from unittest import TestCase
 
