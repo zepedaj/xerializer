@@ -3,6 +3,7 @@
 """
 
 from dataclasses import dataclass, field
+from contextlib import contextmanager, nullcontext
 from typing import Tuple, Callable, Union, Dict, Optional
 import re
 from .parser import pxs, AutonamePattern
@@ -108,7 +109,7 @@ class KeyNode(ParsedNode):
     """
     Tuple of expected resolved types.
     """
-    lock: RLock = None
+    _lock: RLock = None
 
     def __init__(self, raw_key: str, value: Node, parser, **kwargs):
         """
@@ -139,6 +140,18 @@ class KeyNode(ParsedNode):
         node = self
         for modifier in self.modifiers:
             node = modifier(node) or node
+
+    @contextmanager
+    def lock(self):
+        """
+        Locks the node and, if the node is bound, the parent.
+        """
+        with self.lock:
+            if self.parent:
+                with self.parent.lock:
+                    yield
+            else:
+                yield
 
     def __str__(self):
         return f"KeyNode<'{self.name}'>"
@@ -198,6 +211,9 @@ class KeyNode(ParsedNode):
 
 @dataclass
 class DictContainer(Container):
+    """
+    Contains a dictionary node. Adding and removing entries to this dictinoary should be done entirely using :meth:`add` and :meth:`remove` to ensure correct handling of parent/child relationships.
+    """
 
     children: Dict[Node, Node] = None
     # Both key and value will be the same KeyNode, ensuring a single source for the
@@ -222,15 +238,32 @@ class DictContainer(Container):
     def add(self, node: KeyNode):
         """
         Adds the node to the container or replaces the node with the same name if one exists.
+        The node's parent is set to ``self``.
         """
-        with node.lock:
+        with self.lock, node.lock:
             if node.parent is not None:
                 raise Exception('Attempted to add a node that already has a parent.')
+            # Remove node of same name, if it exists.
+            self.remove(node, safe=True)
+            # Add the new node.
             node.parent = self
             self.children[node] = node
 
-    def remove(self, node: Union[KeyNode, str]):
-        self.children.pop(node)
+    def remove(self, node: Union[KeyNode, str], safe=False) -> KeyNode:
+        """
+        Removes the child node with the same name as ``node`` from the container.
+
+        The removed node's parent is set to ``None`` and the node is returned.
+
+        :param node: The name or node whose name will serve as a key.
+        :param safe: Whether to ignore non-existing keys.
+
+        .. warning:: The remove node is only guaranteed to match the input node in name.
+        """
+        with self.lock, (nullcontext(None) if isinstance(node, str) else node.lock):
+            if popped_node := self.children.pop(node, *((None,) if safe else tuple())):
+                popped_node.parent = None
+                return popped_node
 
     def resolve(self):
         """

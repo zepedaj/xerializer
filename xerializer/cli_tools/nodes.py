@@ -25,9 +25,9 @@ class Node(abc.ABC):
     Base node used to represent contants, containers, keys and values.
     """
     flags: Set[FLAGS] = field(default_factory=set)
-    parent: Optional['Node'] = None
+    parent: Optional['Node'] = field(default=None, init=False)
     """
-    The parent node.
+    The parent node. This field is handled by container nodes and should not be set explicitly.
     """
 
     @abc.abstractmethod

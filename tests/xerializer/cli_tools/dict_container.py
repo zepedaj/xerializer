@@ -56,10 +56,10 @@ class TestRawKeyPatterns(TestCase):
 
 class TestKeyNode(TestCase):
     @classmethod
-    def get_node(self):
+    def get_node(self, name='my_key'):
         parser = Parser({'add_val': add_val_modif})
         node = mdl.KeyNode(
-            'my_key:"my.xerializer:Type":add_val(0, "abc"),add_val(1,2),add_val(2,True)',
+            f'{name}:"my.xerializer:Type":add_val(0, "abc"),add_val(1,2),add_val(2,True)',
             ValueNode('$10+1', parser),
             parser=parser)
         return node
@@ -79,6 +79,21 @@ class TestKeyNode(TestCase):
 
 class TestDictContainer(TestCase):
 
+    def test_hashing(self):
+        node1 = TestKeyNode.get_node()
+        node2 = TestKeyNode.get_node()
+        node3 = TestKeyNode.get_node('my_key_3')
+
+        container = mdl.DictContainer()
+        container.add(node1)
+        container.add(node2)
+        container.add(node3)
+
+        self.assertEqual(len(container.children), 2)
+        # Both hashes match, so retreiven node1 or node2
+        # should result in the same node.
+        self.assertIs(container.children[node1], node2)
+
     def test_rename_key(self):
         node1 = TestKeyNode.get_node()
         node2 = TestKeyNode.get_node()
@@ -86,7 +101,20 @@ class TestDictContainer(TestCase):
         container = mdl.DictContainer()
         [container.add(x) for x in [node1, node2]]
 
+        # Test parent relationships.
+        self.assertIs(node1.parent, None)
+        self.assertIs(node2.parent, container)
+
+        # Test renaming bound KeyNode
+        node1.name = 'abc'  # Works, as node1 was removed when adding node2.
         with self.assertRaisesRegex(
                 Exception,
-                re.escape(f'Remove `{node1}` from parent container before re-naming.')):
-            node1.name = 'abc'
+                re.escape(f'Remove `{node2}` from parent container before re-naming.')):
+            node2.name = 'abc'
+
+        # Test removal
+        self.assertEqual(
+            {'my_key'}, set(container.children.keys()))
+        container.remove(node2)
+        self.assertEqual(
+            set(), set(container.children.keys()))
