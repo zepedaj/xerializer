@@ -1,5 +1,6 @@
 from xerializer.cli_tools import dict_container as mdl
 
+import re
 from unittest import TestCase
 from pglib.py import setdefaultattr
 from xerializer.cli_tools.ast_parser import Parser
@@ -52,13 +53,20 @@ class TestRawKeyPatterns(TestCase):
             self.assertEqual(
                 mdl.KeyNode._parse_raw_key(raw_key), expected)
 
-    def test_all(self):
 
+class TestKeyNode(TestCase):
+    @classmethod
+    def get_node(self):
         parser = Parser({'add_val': add_val_modif})
         node = mdl.KeyNode(
             'my_key:"my.xerializer:Type":add_val(0, "abc"),add_val(1,2),add_val(2,True)',
             ValueNode('$10+1', parser),
             parser=parser)
+        return node
+
+    def test_all(self):
+
+        node = self.get_node()
 
         # Check modifications
         self.assertEqual(node.modifs[0], 'abc')
@@ -67,3 +75,18 @@ class TestRawKeyPatterns(TestCase):
 
         #
         self.assertEqual(node.resolve(), ('my_key', 11))
+
+
+class TestDictContainer(TestCase):
+
+    def test_rename_key(self):
+        node1 = TestKeyNode.get_node()
+        node2 = TestKeyNode.get_node()
+
+        container = mdl.DictContainer()
+        [container.add(x) for x in [node1, node2]]
+
+        with self.assertRaisesRegex(
+                Exception,
+                re.escape(f'Remove `{node1}` from parent container before re-naming.')):
+            node1.name = 'abc'

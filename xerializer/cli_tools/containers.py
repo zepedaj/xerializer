@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import abc
 from threading import RLock
 from .nodes import Node, _kw_only
 from typing import List
@@ -9,17 +10,17 @@ class Container(Node):
 
     lock: RLock = field(default_factory=RLock)
 
-    # @abc.abstractmethod
     @property
-    def children(self): ...
+    @abc.abstractmethod
+    def children(self): return {}
 
-    # @abc.abstractmethod
+    @abc.abstractmethod
     def add(self, node: Node):
         """
         Add the specified node to the container.
         """
 
-    # @abc.abstractmethod
+    @abc.abstractmethod
     def remove(self, node: Node):
         """
         Remove the specified node from the container.

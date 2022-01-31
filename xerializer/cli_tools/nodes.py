@@ -20,7 +20,7 @@ class FLAGS(Enum):
 
 
 @dataclass
-class Node:
+class Node(abc.ABC):
     """
     Base node used to represent contants, containers, keys and values.
     """
@@ -28,10 +28,6 @@ class Node:
     parent: Optional['Node'] = None
     """
     The parent node.
-    """
-    parser: Parser = field(default_factory=_kw_only)
-    """
-    The Python parser used to resolve node types, node modifiers and node content.
     """
 
     @abc.abstractmethod
@@ -65,7 +61,18 @@ class Node:
 
 
 @dataclass
-class ValueNode(Node):
+class ParsedNode(Node):
+    """
+    A node that has content that needs to be Python-parsed.
+    """
+    parser: Parser = field(default_factory=_kw_only)
+    """
+    The Python parser used to resolve node types, node modifiers and node content.
+    """
+
+
+@dataclass
+class ValueNode(ParsedNode):
     """
     Value nodes are nodes that contain children-less content. The content of value nodes is obtained by resolving the input content.
 

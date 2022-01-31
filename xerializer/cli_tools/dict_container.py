@@ -7,7 +7,8 @@ from typing import Tuple, Callable, Union, Dict, Optional
 import re
 from .parser import pxs, AutonamePattern
 from .containers import Container
-from .nodes import Node, _kw_only
+from .nodes import Node, ParsedNode, _kw_only
+from threading import RLock
 
 
 class _RawKeyPatterns:
@@ -53,8 +54,7 @@ class _RawKeyPatterns:
     """
 
 
-@dataclass
-class KeyNode(Node):
+class KeyNode(ParsedNode):
     """
     Key nodes represent a Python dictionary entry and as such, they must always be used as :class:`DictContainer` children. Key nodes have
 
@@ -108,6 +108,7 @@ class KeyNode(Node):
     """
     Tuple of expected resolved types.
     """
+    lock: RLock = None
 
     def __init__(self, raw_key: str, value: Node, parser, **kwargs):
         """
@@ -122,21 +123,25 @@ class KeyNode(Node):
         components = self._parse_raw_key(raw_key)
         self._name = components['name']
         if 'type' in components:
-            types = parser.eval(components['types'])
+            types = parser.eval(components['types']) or tuple()
             self.types = types if isinstance(types, tuple) else (types,)
         if 'modifiers' in components:
-            modifiers = parser.eval(components['modifiers'])
+            modifiers = parser.eval(components['modifiers']) or tuple()
             self.modifiers = modifiers if isinstance(modifiers, tuple) else (modifiers,)
 
         #
         value.parent = self
         self.value = value
+        self.lock = RLock()
         super().__init__(self, parser=parser, **kwargs)
 
         # Apply modifiers.
         node = self
         for modifier in self.modifiers:
             node = modifier(node) or node
+
+    def __str__(self):
+        return f"KeyNode<'{self.name}'>"
 
     @property
     def name(self): return self._name
@@ -148,7 +153,7 @@ class KeyNode(Node):
         """
         with self.lock:
             if self.parent is not None:
-                raise Exception('Remove `KeyNode` from parent container before re-naming.')
+                raise Exception(f'Remove `{self}` from parent container before re-naming.')
             else:
                 self._name = new_name
 
@@ -182,18 +187,19 @@ class KeyNode(Node):
         Returns the resolved name and value as a tuple.
         """
         #
-        name = self.name
-        value = self.value.resolve()
-        #
-        if self.types and not isinstance(value, self.types):
-            raise TypeError(f'Invalid type {type(value)}. Expected one of {self.types}.')
-        return name, value
+        with self.lock:
+            name = self.name
+            value = self.value.resolve()
+            #
+            if self.types and not isinstance(value, self.types):
+                raise TypeError(f'Invalid type {type(value)}. Expected one of {self.types}.')
+            return name, value
 
 
 @dataclass
 class DictContainer(Container):
 
-    children: Dict[Node, Node] = field(default_factory=_kw_only)
+    children: Dict[Node, Node] = None
     # Both key and value will be the same KeyNode, ensuring a single source for the
     # node name.
     #
@@ -209,11 +215,19 @@ class DictContainer(Container):
     # that node is not a part of a dictionary where another KeyNode exists with the
     # same name will result in unexpected behavior.
 
+    def __init__(self, **kwargs):
+        self.children = {}
+        super().__init__(**kwargs)
+
     def add(self, node: KeyNode):
         """
         Adds the node to the container or replaces the node with the same name if one exists.
         """
-        self.children[node] = node
+        with node.lock:
+            if node.parent is not None:
+                raise Exception('Attempted to add a node that already has a parent.')
+            node.parent = self
+            self.children[node] = node
 
     def remove(self, node: Union[KeyNode, str]):
         self.children.pop(node)
