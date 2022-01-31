@@ -86,13 +86,17 @@ class ValueNode(Node):
 
     raw_value: str = field(default_factory=_kw_only)
 
+    def __init__(self, raw_value, parser, **kwargs):
+        self.raw_value = raw_value
+        super().__init__(parser=parser, **kwargs)
+
     def resolve(self) -> Any:
-        if isinstance(self.input_content, str):
-            if self.input_content[0] == '$':
-                return self.parser.eval(self.input_content[1:])
-            elif self.input_content[0] == '\\':
-                return self.input_content[1:]
+        if isinstance(self.raw_value, str):
+            if self.raw_value[0] == '$':
+                return self.parser.eval(self.raw_value[1:])
+            elif self.raw_value[0] == '\\':
+                return self.raw_value[1:]
             else:
-                return self.input_content
+                return self.raw_value
         else:
-            return self.input_content
+            return self.raw_value

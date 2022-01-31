@@ -55,7 +55,7 @@ def register(name, value, /, overwrite=False, context=DEFAULT_CONTEXT):
 
 class Parser:
 
-    def __init__(self, operators='numpy', context=DEFAULT_CONTEXT):
+    def __init__(self, context=None, operators='numpy'):
         """
         :param operators: ['numpy'|'python'] Use math operators from Numpy or Python. Python math operators have infinite precision and unbounded compute time, resulting possibly in system hangs. Numpy operators have finite precision but bounded compute time.
 
@@ -63,7 +63,7 @@ class Parser:
         """
         self._operators = dict({'numpy': NUMPY_PRECISION, 'python': PYTHON_PRECISION})[operators]
 
-        self._context = dict(context)
+        self._context = {**DEFAULT_CONTEXT, **(context or {})}
 
     def register(self, name, value, overwrite=False):
         register(name, value, overwrite=overwrite, context=self._context)
@@ -105,5 +105,7 @@ class Parser:
             return self.get_from_context(node.id)
         elif isinstance(node, ast.Constant):
             return node.value
+        elif isinstance(node, ast.Tuple):
+            return tuple(self._eval(x) for x in node.elts)
         else:
             raise UnsupportedGrammarComponent(node)
