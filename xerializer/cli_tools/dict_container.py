@@ -212,7 +212,7 @@ class KeyNode(ParsedNode):
 @dataclass
 class DictContainer(Container):
     """
-    Contains a dictionary node. Adding and removing entries to this dictinoary should be done entirely using :meth:`add` and :meth:`remove` to ensure correct handling of parent/child relationships.
+    Contains a dictionary node. Adding and removing entries to this container should be done entirely using :meth:`add` and :meth:`remove` to ensure correct handling of parent/child relationships.
     """
 
     children: Dict[Node, Node] = None

@@ -56,7 +56,7 @@ class TestRawKeyPatterns(TestCase):
 
 class TestKeyNode(TestCase):
     @classmethod
-    def get_node(self, name='my_key'):
+    def get_node(cls, name='my_key'):
         parser = Parser({'add_val': add_val_modif})
         node = mdl.KeyNode(
             f'{name}:"my.xerializer:Type":add_val(0, "abc"),add_val(1,2),add_val(2,True)',
