@@ -7,6 +7,7 @@ from contextlib import contextmanager, nullcontext
 from typing import Tuple, Callable, Union, Dict, Optional
 import re
 from .parser import pxs, AutonamePattern
+from .ast_parser import Parser
 from .containers import Container
 from .nodes import Node, ParsedNode, _kw_only
 from threading import RLock
@@ -69,7 +70,7 @@ class KeyNode(ParsedNode):
     Key nodes can be initialized from a raw string in the format |raw key format|, where
 
     * **name** will be used to set :attr:`KeyNode.name` and must be a valid variable name;
-    * **types** is a either a valid type in the parser's context, an xerializer-recognized string signature, or a tuple of these; and
+    * **types** is either a valid type in the parser's context, an xerializer-recognized string signature, or a tuple of these; and
     * **modifiers** is a callable or tuple of callables that take a node as an argument an modify it and potentially replace it.
 
     Both **types** and **modifiers** must be valid python statements.
@@ -77,11 +78,10 @@ class KeyNode(ParsedNode):
     .. _key node life cycle:
     .. rubric:: Key node life cycle
 
-    Key node modifiers are applied at the end of node initialization. Type checking is applied at the end of node resolution. Typically, this happens in the following order:
+    Key node modifiers are applied by calling the node's :meth:`modify` method. Type checking is applied at the end of node resolution. Typically, this happens in the following order:
 
 
-
-    1. Modifiers are applied sequentially to ``self`` at the end of initialization. A modifier can optionally return a new node, in which case subsequent modifiers will be applied to this new node instead of ``self``. This functionality is handy when, e.g., a modifier replaces a node by a new node. This process is illustrated by the following code snippet that executes at the end of node initialization:
+    1. Modifiers are applied sequentially to ``self``. A modifier can optionally return a new node, in which case subsequent modifiers will be applied to this new node instead of ``self``. This functionality is handy when, e.g., a modifier replaces a node by a new node. This process is illustrated by the following code snippet inside :meth:`modify`:
 
       .. code-block::
 
@@ -111,7 +111,7 @@ class KeyNode(ParsedNode):
     """
     _lock: RLock = None
 
-    def __init__(self, raw_key: str, value: Node, parser, **kwargs):
+    def __init__(self, raw_key: str, value: Node, parser: Parser, **kwargs):
         """
         Initializes the node, setting the parent of value as ``self``.
 
@@ -121,14 +121,10 @@ class KeyNode(ParsedNode):
         """
 
         # Extract data from raw key.
-        components = self._parse_raw_key(raw_key)
+        components = self._parse_raw_key(parser, raw_key)
         self._name = components['name']
-        if 'type' in components:
-            types = parser.eval(components['types']) or tuple()
-            self.types = types if isinstance(types, tuple) else (types,)
-        if 'modifiers' in components:
-            modifiers = parser.eval(components['modifiers']) or tuple()
-            self.modifiers = modifiers if isinstance(modifiers, tuple) else (modifiers,)
+        self.types = components['types']
+        self.modifiers = components['modifiers']
 
         #
         value.parent = self
@@ -136,10 +132,16 @@ class KeyNode(ParsedNode):
         self.lock = RLock()
         super().__init__(self, parser=parser, **kwargs)
 
+    def modify(self):
+        """
+        Applies the modifiers to the node.
+        """
+
         # Apply modifiers.
         node = self
-        for modifier in self.modifiers:
-            node = modifier(node) or node
+        if self.modifiers:
+            for modifier in self.modifiers:
+                node = modifier(node) or node
 
     @contextmanager
     def lock(self):
@@ -184,16 +186,36 @@ class KeyNode(ParsedNode):
             return val.name == self.name
 
     @classmethod
-    def _parse_raw_key(cls, raw_key):
+    def _parse_raw_key(cls, parser: Parser, raw_key: str):
+        match = cls._split_raw_key(raw_key)
+        out = {
+            'name': match['name'],
+            'types': cls._parse_raw_key_component(parser, match['types']),
+            'modifiers': cls._parse_raw_key_component(parser, match['modifiers']),
+        }
+        return out
+
+    @classmethod
+    def _split_raw_key(cls, raw_key: str):
         """
-        Returns a dict with 'name', 'types' and 'modifiers'. The content of 'type' and 'modifiers' will be None if unavailable.
+        Returns a dict with sub-strings 'name', 'types' and 'modifiers'. The content of 'types' and 'modifiers' will be None if unavailable.
         """
         if not (match := re.fullmatch(_RawKeyPatterns.RAW_KEY_PATTERN, raw_key)):
             # TODO: Add the file, if available, to the error message.
             raise Exception(f'Invalid described key syntax `{raw_key}`.')
         else:
-            out = {key: match[key] for key in ['name', 'types', 'modifiers']}
-            return out
+            return {key: match[key] for key in ['name', 'types', 'modifiers']}
+
+    @classmethod
+    def _parse_raw_key_component(cls, parser: Parser, component: Optional[str]):
+        """
+        Evaluates the component ('types' or 'modifiers') and returns its parsed value. If this is not a tuple, it is instead returned as a single-entry tuple.
+        """
+        if component is None:
+            return None
+        component = parser.eval(component) if component else tuple()
+        component = component if isinstance(component, tuple) else (component,)
+        return component
 
     def resolve(self):
         """

@@ -19,7 +19,7 @@ def add_val_modif(key, val):
 
 
 class TestRawKeyPatterns(TestCase):
-    def test_parse_raw_key(self):
+    def test_split_raw_key(self):
         for raw_key, expected in [
             ('my_key',
              {'name': 'my_key',
@@ -51,7 +51,7 @@ class TestRawKeyPatterns(TestCase):
               'modifiers': 'modif1,modif2,modif3(64,"abc",True)'}),
         ]:
             self.assertEqual(
-                mdl.KeyNode._parse_raw_key(raw_key), expected)
+                mdl.KeyNode._split_raw_key(raw_key), expected)
 
 
 class TestKeyNode(TestCase):
@@ -59,7 +59,7 @@ class TestKeyNode(TestCase):
     def get_node(cls, name='my_key'):
         parser = Parser({'add_val': add_val_modif})
         node = mdl.KeyNode(
-            f'{name}:"my.xerializer:Type":add_val(0, "abc"),add_val(1,2),add_val(2,True)',
+            f'{name}:int:add_val(0, "abc"),add_val(1,2),add_val(2,True)',
             ValueNode('$10+1', parser),
             parser=parser)
         return node
@@ -67,6 +67,9 @@ class TestKeyNode(TestCase):
     def test_all(self):
 
         node = self.get_node()
+
+        # Modify the node
+        node.modify()
 
         # Check modifications
         self.assertEqual(node.modifs[0], 'abc')

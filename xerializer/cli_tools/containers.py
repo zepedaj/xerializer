@@ -26,6 +26,12 @@ class Container(Node):
         Remove the specified node from the container.
         """
 
+    @abc.abstractmethod
+    def resolve(self, node: Node):
+        """
+        Resolve the entire container.
+        """
+
 
 @dataclass
 class ListContainer(Container):
