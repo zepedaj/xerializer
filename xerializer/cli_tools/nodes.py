@@ -1,11 +1,11 @@
 """
-.. |CURRENT_NODE_VAR_NAME| replace:: {CURRENT_NODE_VAR_NAME}
 """
 from dataclasses import dataclass, field
 import abc
 from .ast_parser import Parser
 from typing import Any, Set, Optional
 from enum import Enum, auto
+from . import varnames
 
 
 def _kw_only():
@@ -21,13 +21,8 @@ class FLAGS(Enum):
     HIDDEN = auto()
 
 
-CURRENT_NODE_VAR_NAME = 'n_'
-"""
-Specifies the name of the current node variable in the parser context.
-"""
-
-# Replace {CURRENT_NODE_VAR_NAME} in the __doc__ string.
-__doc__.format(**vars())
+# Add sphinx replacements.
+__doc__ += f"\n{varnames.SPHINX_DEFS}"
 
 
 @dataclass
@@ -62,7 +57,7 @@ class ParsedNode(Node):
         """
         Evaluates the python expression ``py_expr``, adding ``self`` as variable |CURRENT_NODE_VAR_NAME| in the parser evaluation context.
         """
-        return self.parser.eval(py_expr, {CURRENT_NODE_VAR_NAME: self})
+        return self.parser.eval(py_expr, {varnames.CURRENT_NODE_VAR_NAME: self})
 
 
 @dataclass

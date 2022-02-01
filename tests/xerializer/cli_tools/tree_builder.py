@@ -18,3 +18,11 @@ class TestAlphaConf(TestCase):
                 resolved := mdl.AlphaConf(raw_data).resolve(),
                 expected)
             self.assertIs(type(resolved), type(expected))
+
+    def test_resolve_root(self):
+
+        raw_data = [1, {'a': 2, 'b': '$3+1', 'c': "$'xyz'", 'd': [1, 2, '$r_']},
+                    2, {'e': '$2**3'}]
+        aconf = mdl.AlphaConf(raw_data)
+        self.assertIs(
+            aconf.node_tree, aconf.resolve()[1]['d'][2])
