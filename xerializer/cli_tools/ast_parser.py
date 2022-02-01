@@ -1,4 +1,6 @@
 import ast
+from dataclasses import dataclass
+from typing import Dict, Any
 import builtins
 import operator as op
 import numpy as np
@@ -23,10 +25,12 @@ NUMPY_PRECISION = {key: (lambda *args, val=val: val(*args).item())
                     ast.Div: np.divide, ast.Pow: np.power, ast.BitXor: np.bitwise_xor,
                     ast.USub: np.negative}.items()}
 
-# WARNING: Using python precision can result in hangs from malicious input.
 PYTHON_PRECISION = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
                     ast.Div: op.truediv, ast.Pow: op.pow, ast.BitXor: op.xor,
                     ast.USub: op.neg}
+"""
+.. warning:: Using python (infinite) precision can result in hangs from malicious input.
+"""
 
 BUILTIN_SCALAR_TYPES = (
     'float', 'int', 'bool', 'bytes', 'str')
@@ -44,13 +48,57 @@ Contains the default context accessible to parsers.
 """
 
 
-def register(name, value, /, overwrite=False, context=DEFAULT_CONTEXT):
+class _Unassigned:
+    pass
+
+
+@dataclass
+class register:
     """
-    Registers a variable in the specified context (the default context by default).
+    Register a variable in the default context.
+
+    Example:
+
+    .. test-code::
+
+      my_var = 'my variable'
+
+      # As a stand-alone call
+      register('my_var', my_var)
+
+      # As a function decorator
+      @register('my_function')
+      def my_function: pass
+
     """
-    if not overwrite and name in DEFAULT_CONTEXT:
-        raise Exception(f'A variable with name `{name}` already exists in the context.')
-    context[name] = value
+
+    def __init__(self, name: str, value: Any = _Unassigned, *, overwrite: bool = False,
+                 context: Dict[str, Any] = DEFAULT_CONTEXT):
+        """
+        :param name: The name of the variable in the context.
+        :param overwrite:  Whether to overwrite the variable if it is already in the context.
+        :param context: The context to modify.
+        """
+
+        self.name = name
+        self.overwrite = overwrite
+        self.context = context
+        self.executed = False
+
+        if value is not _Unassigned:
+            self._register(value)
+
+    def __call__(self, fxn):
+        """
+        Registers the input function.
+        """
+        self._register(fxn)
+        return fxn
+
+    def _register(self, value):
+        if not self.overwrite and self.name in DEFAULT_CONTEXT:
+            raise Exception(f'A variable with name `{self.name}` already exists in the context.')
+        self.context[self.name] = value
 
 
 class Parser:
@@ -68,44 +116,42 @@ class Parser:
     def register(self, name, value, overwrite=False):
         register(name, value, overwrite=overwrite, context=self._context)
 
-    def get_from_context(self, name):
+    def get_from_context(self, name, context=None):
         try:
-            return self._context[name]
+            return (context or self._context)[name]
         except KeyError:
             raise UndefinedFunction(f'Name `{name}` undefined in parser context.')
 
-    def eval(self, expr):
+    def eval(self, expr, extra_context=None):
+        """
+        Evaluates the python expression ``expr``.
+
+        The parser's context is extended by ``extra_context`` if provided.
         """
 
-        Extension of `https://stackoverflow.com/questions/2371436/evaluating-a-mathematical-expression-in-a-string`.
-
-        >>> parser.eval('2^6')
-        4
-        >>> parser._evalexpr('2**6')
-        64
-        >>> parser._evalexpr('1 + 2*3**(4^5) / (6 + -7)')
-        -5.0
-        """
+        extended_context = {**self._context, **extra_context} if extra_context else None
         if len(expr) > MAX_EXPR_LEN:
             raise Exception('The input expression has length {len(expr)} > {MAX_EXPR_LEN}.')
-        return self._eval(ast.parse(expr, mode='eval').body)
+        return self._eval(ast.parse(expr, mode='eval').body, extended_context)
 
-    def _eval(self, node):
+    def _eval(self, node, context=None):
         if isinstance(node, ast.Num):  # <number>
             return node.n
         elif isinstance(node, ast.BinOp):  # <left> <operator> <right>
-            return self._operators[type(node.op)](self._eval(node.left), self._eval(node.right))
+            return self._operators[type(node.op)](
+                self._eval(node.left, context),
+                self._eval(node.right, context))
         elif isinstance(node, ast.UnaryOp):  # <operator> <operand> e.g., -1
-            return self._operators[type(node.op)](self._eval(node.operand))
+            return self._operators[type(node.op)](self._eval(node.operand, context))
         elif isinstance(node, ast.Call):
-            return self.get_from_context(node.func.id)(
-                *[self._eval(x) for x in node.args],
-                **{x.arg: self._eval(x.value) for x in node.keywords})
+            return self.get_from_context(node.func.id, context)(
+                *[self._eval(x, context) for x in node.args],
+                **{x.arg: self._eval(x.value, context) for x in node.keywords})
         elif isinstance(node, ast.Name):
-            return self.get_from_context(node.id)
+            return self.get_from_context(node.id, context)
         elif isinstance(node, ast.Constant):
             return node.value
         elif isinstance(node, ast.Tuple):
-            return tuple(self._eval(x) for x in node.elts)
+            return tuple(self._eval(x, context) for x in node.elts)
         else:
             raise UnsupportedGrammarComponent(node)

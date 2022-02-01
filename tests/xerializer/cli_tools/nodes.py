@@ -1,4 +1,5 @@
 from xerializer.cli_tools import nodes as mdl
+from xerializer.cli_tools.dict_container import KeyNode
 from xerializer.cli_tools.ast_parser import Parser
 
 from unittest import TestCase
@@ -23,3 +24,11 @@ class TestValueNode(TestCase):
             #
             self.assertEqual(resolved_value := node.resolve(), expected_resolved_value)
             self.assertIs(type(resolved_value), type(expected_resolved_value))
+
+    def test_current_node_resolution(self):
+        parser = Parser()
+
+        #
+        node = KeyNode('my_name', value_node := mdl.ValueNode('$n_', parser=parser), parser=parser)
+        self.assertEqual(resolved := node.resolve(), ('my_name', value_node))
+        self.assertIs(resolved[1], value_node)

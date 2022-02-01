@@ -14,4 +14,5 @@ Motivation
 * Common type-checking interface
 * Python-based syntax, transparent to the user.
 * Consistent, flexible conventions.
+* Plays nicely with ``argparse`` -- can be used to define a parser parameter, or to auto-build a parser.
 """

@@ -1,8 +1,10 @@
+"""
+.. |CURRENT_NODE_VAR_NAME| replace:: {CURRENT_NODE_VAR_NAME}
+"""
 from dataclasses import dataclass, field
 import abc
-from threading import RLock
 from .ast_parser import Parser
-from typing import Any, Set, Dict, Tuple, Callable, Optional, List
+from typing import Any, Set, Optional
 from enum import Enum, auto
 
 
@@ -17,6 +19,15 @@ def _kw_only():
 
 class FLAGS(Enum):
     HIDDEN = auto()
+
+
+CURRENT_NODE_VAR_NAME = 'n_'
+"""
+Specifies the name of the current node variable in the parser context.
+"""
+
+# Replace {CURRENT_NODE_VAR_NAME} in the __doc__ string.
+__doc__.format(**vars())
 
 
 @dataclass
@@ -36,29 +47,6 @@ class Node(abc.ABC):
         Computes and returns the node's value.
         """
 
-    # @property
-    # def branch(self):
-    #     """
-    #     Returns the list of nodes from the root (inclusive) down to this node (inclusive).
-    #     """
-    #     branch = [self]
-    #     while (parent := branch[0].parent) is not None:
-    #         branch.insert(0, parent)
-    #     return branch
-
-    # def root(self):
-    #     """
-    #     Returns the root node.
-    #     """
-    #     return self.branch[0]
-
-    # @property
-    # def qual_name(self):
-    #     """
-    #     Returns the fully-qualified node name relative to the root node.
-    #     """
-    #     return '.'.join(x.name for x in self.branch())
-
 
 @dataclass
 class ParsedNode(Node):
@@ -69,6 +57,12 @@ class ParsedNode(Node):
     """
     The Python parser used to resolve node types, node modifiers and node content.
     """
+
+    def eval(self, py_expr: str):
+        """
+        Evaluates the python expression ``py_expr``, adding ``self`` as variable |CURRENT_NODE_VAR_NAME| in the parser evaluation context.
+        """
+        return self.parser.eval(py_expr, {CURRENT_NODE_VAR_NAME: self})
 
 
 @dataclass
@@ -100,7 +94,7 @@ class ValueNode(ParsedNode):
     def resolve(self) -> Any:
         if isinstance(self.raw_value, str):
             if self.raw_value[0] == '$':
-                return self.parser.eval(self.raw_value[1:])
+                return self.eval(self.raw_value[1:])
             elif self.raw_value[0] == '\\':
                 return self.raw_value[1:]
             else:
