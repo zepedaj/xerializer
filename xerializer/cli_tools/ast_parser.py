@@ -103,15 +103,15 @@ class register:
 
 class Parser:
 
-    def __init__(self, context=None, operators='numpy'):
+    def __init__(self, extra_context=None, operators='numpy'):
         """
+        :param extra_context: Extra variables to append to the default context. These will overwrite existing variables of the same name.
         :param operators: ['numpy'|'python'] Use math operators from Numpy or Python. Python math operators have infinite precision and unbounded compute time, resulting possibly in system hangs. Numpy operators have finite precision but bounded compute time.
 
         .. warning:: Using python precision can result in system hangs from malicious input given Python's infinite precision (e.g., ``parser.eval('9**9**9**9**9**9**9')`` will hang).
         """
         self._operators = dict({'numpy': NUMPY_PRECISION, 'python': PYTHON_PRECISION})[operators]
-
-        self._context = {**DEFAULT_CONTEXT, **(context or {})}
+        self._context = {**DEFAULT_CONTEXT, **(extra_context or {})}
 
     def register(self, name, value, overwrite=False):
         register(name, value, overwrite=overwrite, context=self._context)
