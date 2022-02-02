@@ -2,8 +2,12 @@ from .ast_parser import register
 
 
 @register('parent')
-def parent(node):
+def parent(node, levels=1):
     """
-    Returns the parent of the node.
+    Returns the ancestor of the node of the specified levels up. Use ``levels=0`` to denote the node itself.
     """
-    return node.parent
+    for _ in range(levels):
+        node = node.parent
+        if node is None:
+            raise Exception(f'Node {node} is a root node!')
+    return node

@@ -1,11 +1,14 @@
 """
 """
 from dataclasses import dataclass, field
+from .modifiers import parent
+import numpy as np
 import abc
 from .ast_parser import Parser
 from typing import Any, Set, Optional
 from enum import Enum, auto
 from . import varnames
+import re
 
 
 def _kw_only():
@@ -41,6 +44,62 @@ class Node(abc.ABC):
         """
         Computes and returns the node's value.
         """
+
+    _REF_STR_COMPONENT_PATTERN = r'((?P<parents>\.+)|(?P<index>(0|[1-9]\d*))|(?P<key>[a-zA-Z+]\w*))'
+    _FULL_REF_STR_PATTERN = _REF_STR_COMPONENT_PATTERN + '+'
+    # Compile the patterns.
+    _REF_STR_COMPONENT_PATTERN = re.compile(_REF_STR_COMPONENT_PATTERN)
+    _FULL_REF_STR_PATTERN = re.compile(_FULL_REF_STR_PATTERN)
+
+    def __call__(self, ref: str = '.', calling_node=None):
+        """
+        Retrieves the resolved value of a dependent node relative to ``self`` using a dot-separated reference string.
+
+        The string can contain a sequence of dot-separated keys or integer. A sequence of ``N`` contiguous dots refers to the ``N-1``-th parent node. Omitting the reference string will resolve the entire node tree
+
+        .. rubric:: Examples
+
+        .. code-block::
+
+          #
+          raw_data = {'my_key0':[0,1,2], 'my_key1':[4,5,6]}
+          root = AlphaConf(raw_data).node_tree # Retrieves the root node.
+
+          # Ref string syntax
+          assert root() == raw_data
+          assert root('my_key0.1') == 0
+          assert root('my_key0..my_key1.2') == 6
+          assert root('my_key0.0...') == raw_data
+
+          # Alternate syntax with __getitem__ on container nodes
+          # - retrieve the node with a sequence of __getitem__ calls
+          # and then resolve the node with a __call__ call.
+          assert root['my_key0'][1]() == 0
+          assert root['my_key0']['my_key1'][2]() == 6
+          assert parent(root['my_key0'][0], 2)() == raw_data
+
+        :param ref: A string of dot-separated keys, indices or empty strings.
+
+        """
+
+        # Check full syntax matches.
+        if not re.fullmatch(self._FULL_REF_STR_PATTERN, ref):
+            raise Exception(f'Invalid reference string `{ref}`.')
+
+        # Apply ref components.
+        node = self
+        for _key_match in re.finditer(self._REF_STR_COMPONENT_PATTERN, ref):
+            if (ref := _key_match['parents']) is not None:
+                node = parent(node, len(ref)-1)
+            elif (ref := _key_match['key']) is not None:
+                node = node[ref]
+            elif (ref := _key_match['index']) is not None:
+                node = node[int(ref)]
+            else:
+                raise Exception('Unexpected case!')
+
+        # Resolve the node
+        return node.resolve()
 
 
 @dataclass

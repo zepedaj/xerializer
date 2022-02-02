@@ -16,6 +16,7 @@ class AlphaConf:
         """
         self.parser = parser or Parser(context)
         self.node_tree = self.build_node_tree(raw_data, parser=self.parser)
+        # self.node_tree.modify() # Apply modifiers.
         self.parser.register('r_', self.node_tree)
 
     @classmethod

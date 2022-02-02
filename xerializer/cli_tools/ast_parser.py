@@ -19,18 +19,13 @@ class UnsupportedGrammarComponent(TypeError):
     pass
 
 
-NUMPY_PRECISION = {key: (lambda *args, val=val: val(*args).item())
-                   for key, val in
-                   {ast.Add: np.add, ast.Sub: np.subtract, ast.Mult: np.multiply,
-                    ast.Div: np.divide, ast.Pow: np.power, ast.BitXor: np.bitwise_xor,
-                    ast.USub: np.negative}.items()}
-
 PYTHON_PRECISION = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
                     ast.Div: op.truediv, ast.Pow: op.pow, ast.BitXor: op.xor,
                     ast.USub: op.neg}
 """
-.. warning:: Using python (infinite) precision can result in hangs from malicious input.
+.. warning:: Python operators have infinite precision and can result in hangs when large computations are requested.
 """
+# TODO: One solution to this problem is to use the finite-precision numpy operators when all arguments are numbers.
 
 BUILTIN_SCALAR_TYPES = (
     'float', 'int', 'bool', 'bytes', 'str')
@@ -103,14 +98,13 @@ class register:
 
 class Parser:
 
-    def __init__(self, extra_context=None, operators='numpy'):
+    def __init__(self, extra_context=None):
         """
         :param extra_context: Extra variables to append to the default context. These will overwrite existing variables of the same name.
-        :param operators: ['numpy'|'python'] Use math operators from Numpy or Python. Python math operators have infinite precision and unbounded compute time, resulting possibly in system hangs. Numpy operators have finite precision but bounded compute time.
 
         .. warning:: Using python precision can result in system hangs from malicious input given Python's infinite precision (e.g., ``parser.eval('9**9**9**9**9**9**9')`` will hang).
         """
-        self._operators = dict({'numpy': NUMPY_PRECISION, 'python': PYTHON_PRECISION})[operators]
+        self._operators = PYTHON_PRECISION
         self._context = {**DEFAULT_CONTEXT, **(extra_context or {})}
 
     def register(self, name, value, overwrite=False):
@@ -144,14 +138,28 @@ class Parser:
         elif isinstance(node, ast.UnaryOp):  # <operator> <operand> e.g., -1
             return self._operators[type(node.op)](self._eval(node.operand, context))
         elif isinstance(node, ast.Call):
-            return self.get_from_context(node.func.id, context)(
+            func = self._eval(node.func, context)
+            return func(
                 *[self._eval(x, context) for x in node.args],
-                **{x.arg: self._eval(x.value, context) for x in node.keywords})
+                *[self._eval(x, context) for x in getattr(node, 'starargs', [])],
+                **{x.arg: self._eval(x.value, context) for x in node.keywords},
+                **{x.arg: self._eval(x.value, context) for x in getattr(node, 'kwargs', [])})
+        elif isinstance(node, ast.Subscript):
+            obj = self._eval(node.value, context)
+            ref = self._eval(node.slice, context)
+            return obj[ref]
         elif isinstance(node, ast.Name):
             return self.get_from_context(node.id, context)
         elif isinstance(node, ast.Constant):
             return node.value
         elif isinstance(node, ast.Tuple):
             return tuple(self._eval(x, context) for x in node.elts)
+        elif isinstance(node, ast.Slice):
+            return slice(
+                self._eval(node.lower, context) if node.lower else node.lower,
+                self._eval(node.upper, context) if node.upper else node.upper,
+                self._eval(node.step, context)) if node.step else node.step,
+        elif isinstance(node, ast.Index):
+            return self._eval(node.value, context)
         else:
             raise UnsupportedGrammarComponent(node)

@@ -8,10 +8,17 @@ class TestAlphaConf(TestCase):
     def test_build_node_tree(self):
 
         for raw_data, expected in [
+                #
                 (1, 1),
+                #
                 ([1, {'a': 2, 'b': '$3+1', 'c': "$'xyz'", 'd': [1, 2, '$"alpha"']},
                   2, {'e': '$2**3'}],
                  [1, {'a': 2, 'b': 4, 'c': 'xyz', 'd': [1, 2, 'alpha']},
+                  2, {'e': 8}]),
+                #
+                (['abc', {'a': 2, 'b': '$3+1', 'c': "$'xyz'", 'd': [1, 2, "$r_('0')", "$r_[0]() + 'x'"]},
+                  2, {'e': '$2**3'}],
+                 ['abc', {'a': 2, 'b': 4, 'c': 'xyz', 'd': [1, 2, 'abc', 'abcx']},
                   2, {'e': 8}]),
         ]:
             self.assertEqual(

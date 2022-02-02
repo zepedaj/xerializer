@@ -32,6 +32,12 @@ class Container(Node):
         Resolve the entire container.
         """
 
+    def __getitem__(self, *args) -> Node:
+        """
+        Returns the specified node or nodes.
+        """
+        return self.children.__getitem__(*args)
+
 
 @dataclass
 class ListContainer(Container):

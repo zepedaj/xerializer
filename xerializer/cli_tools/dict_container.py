@@ -306,9 +306,9 @@ class DictContainer(Container):
         """
         return dict(child.resolve() for child in self.children.values())
 
-    def __getitem__(self, key: str):
-        """
-        Returns the resolved value for the specified key.
-        """
-        name, value = self.children[key].resolve()
-        return value
+    # def __getitem__(self, key: str):
+    #     """
+    #     Returns the resolved value for the specified key.
+    #     """
+    #     name, value = self.children[key].resolve()
+    #     return value

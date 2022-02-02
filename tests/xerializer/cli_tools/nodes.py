@@ -1,6 +1,7 @@
 from xerializer.cli_tools import nodes as mdl
 from xerializer.cli_tools.dict_container import KeyNode
 from xerializer.cli_tools.ast_parser import Parser
+from xerializer.cli_tools.tree_builder import AlphaConf
 
 from unittest import TestCase
 
@@ -32,3 +33,10 @@ class TestValueNode(TestCase):
         node = KeyNode('my_name', value_node := mdl.ValueNode('$n_', parser=parser), parser=parser)
         self.assertEqual(resolved := node.resolve(), ('my_name', value_node))
         self.assertIs(resolved[1], value_node)
+
+    def test_call(self):
+        parser = Parser()
+
+        #
+        node = KeyNode('my_name', value_node := mdl.ValueNode('$n_', parser=parser), parser=parser)
+        self.assertEqual(node(), ('my_name', value_node))
