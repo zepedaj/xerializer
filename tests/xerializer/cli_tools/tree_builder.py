@@ -22,7 +22,7 @@ class TestAlphaConf(TestCase):
                   2, {'e': 8}]),
         ]:
             self.assertEqual(
-                resolved := mdl.AlphaConf(raw_data).resolve(),
+                resolved := (ac_obj := mdl.AlphaConf(raw_data)).resolve(),
                 expected)
             self.assertIs(type(resolved), type(expected))
 

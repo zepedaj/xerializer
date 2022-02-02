@@ -49,5 +49,11 @@ class AlphaConf:
         #
         return out
 
+    def __call__(self, *args):
+        return self.node_tree.resolve(*args)
+
     def resolve(self):
         return self.node_tree.resolve()
+
+    def __getitem__(self, *args):
+        return self.node_tree.__getitem__(*args)

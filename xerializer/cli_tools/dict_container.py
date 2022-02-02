@@ -230,7 +230,7 @@ class KeyNode(ParsedNode):
         component = component if isinstance(component, tuple) else (component,)
         return component
 
-    def resolve(self):
+    def _unsafe_resolve(self):
         """
         Returns the resolved name and value as a tuple.
         """
@@ -300,15 +300,14 @@ class DictContainer(Container):
                 popped_node.parent = None
                 return popped_node
 
-    def resolve(self):
+    def _unsafe_resolve(self):
         """
         Returns the resolved dictionary.
         """
         return dict(child.resolve() for child in self.children.values())
 
-    # def __getitem__(self, key: str):
-    #     """
-    #     Returns the resolved value for the specified key.
-    #     """
-    #     name, value = self.children[key].resolve()
-    #     return value
+    def __getitem__(self, key: str):
+        """
+        Returns the resolved value for the specified key.
+        """
+        return self.children[key].value

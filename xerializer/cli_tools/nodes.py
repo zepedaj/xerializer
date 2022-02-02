@@ -2,13 +2,13 @@
 """
 from dataclasses import dataclass, field
 from .modifiers import parent
-import numpy as np
 import abc
 from .ast_parser import Parser
-from typing import Any, Set, Optional
+from typing import Any, Set, Optional, List
 from enum import Enum, auto
 from . import varnames
 import re
+from .resolving_node import ResolvingNode
 
 
 def _kw_only():
@@ -38,11 +38,28 @@ class Node(abc.ABC):
     """
     The parent node. This field is handled by container nodes and should not be set explicitly.
     """
+    dependencies: List['Node'] = field(default_factory=list)
+    """
+    The set of nodes that the current node depends on for resolution. 
+    """
 
-    @abc.abstractmethod
     def resolve(self):
         """
-        Computes and returns the node's value.
+        Computes and returns the node's value, checking for cyclical references and generating meaningful error messages if these are detected.
+        """
+
+        # Set up marker variable
+        __resolving_node__ = ResolvingNode.find()
+        __resolving_node__.add_dependency(self)  # Checks for references.
+        __resolving_node__ = ResolvingNode(self)
+
+        return self._unsafe_resolve()
+
+    @abc.abstractmethod
+    def _unsafe_resolve(self):
+        """
+        Children classes need to implement this method and not the public method :meth:`resolve`, which wraps this method. As a rule of thumb, this method should never be called directly. 
+        Any node resolutions done inside this method should instead call method :meth:`resolve`.
         """
 
     _REF_STR_COMPONENT_PATTERN = r'((?P<parents>\.+)|(?P<index>(0|[1-9]\d*))|(?P<key>[a-zA-Z+]\w*))'
@@ -145,7 +162,7 @@ class ValueNode(ParsedNode):
         self.raw_value = raw_value
         super().__init__(parser=parser, **kwargs)
 
-    def resolve(self) -> Any:
+    def _unsafe_resolve(self) -> Any:
         if isinstance(self.raw_value, str):
             if self.raw_value[0] == '$':
                 return self.eval(self.raw_value[1:])

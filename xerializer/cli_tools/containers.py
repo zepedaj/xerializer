@@ -26,12 +26,6 @@ class Container(Node):
         Remove the specified node from the container.
         """
 
-    @abc.abstractmethod
-    def resolve(self, node: Node):
-        """
-        Resolve the entire container.
-        """
-
     def __getitem__(self, *args) -> Node:
         """
         Returns the specified node or nodes.
@@ -64,6 +58,6 @@ class ListContainer(Container):
             else:
                 raise TypeError(f'Invalid type {type(index)} for arg `index`.')
 
-    def resolve(self):
+    def _unsafe_resolve(self):
         with self.lock:
             return [n.resolve() for n in self.children]
