@@ -41,3 +41,6 @@ class TestAlphaConf(TestCase):
         # Nested call dependecies
         self.check_deps(ac[1]['d'][2], [ac[0]])
         self.check_deps(ac[1]['d'][3], [ac[2]])
+
+    def test_detect_cycles(self):
+        raise Exception("Not implemented")

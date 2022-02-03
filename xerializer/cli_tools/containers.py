@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from .exceptions import NotAChildOfError
 import abc
 from threading import RLock
 from .nodes import Node
@@ -32,6 +33,12 @@ class Container(Node):
         """
         return self.children.__getitem__(*args)
 
+    @abc.abstractmethod
+    def get_child_qual_name(self, child_node):
+        """
+        Returns the name of the specified child in the container as a string.
+        """
+
 
 @dataclass
 class ListContainer(Container):
@@ -61,3 +68,12 @@ class ListContainer(Container):
     def _unsafe_resolve(self):
         with self.lock:
             return [n.resolve() for n in self.children]
+
+    def get_child_qual_name(self, child_node):
+
+        #
+        for k, contained_child in enumerate(self.children):
+            if child_node is contained_child:
+                return self._derive_qual_name(str(k))
+        #
+        raise NotAChildOfError(child_node, self)

@@ -2,7 +2,7 @@ from xerializer.cli_tools import containers as mdl
 
 from xerializer.cli_tools.ast_parser import Parser
 from unittest import TestCase
-from xerializer.cli_tools.nodes import ValueNode
+from xerializer.cli_tools.nodes import ParsedNode
 
 
 class TestListContainer(TestCase):
@@ -10,7 +10,7 @@ class TestListContainer(TestCase):
     @classmethod
     def get_node(cls, value='$"abc"'):
         parser = Parser()
-        return ValueNode(value, parser)
+        return ParsedNode(value, parser)
 
     def test_all(self):
 

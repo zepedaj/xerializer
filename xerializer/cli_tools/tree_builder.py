@@ -2,7 +2,7 @@
 
 from .containers import ListContainer
 from .dict_container import DictContainer, KeyNode
-from .nodes import ValueNode
+from .nodes import ParsedNode
 from .ast_parser import Parser
 
 
@@ -42,8 +42,8 @@ class AlphaConf:
                 out.add(cls.build_node_tree(val, parser))  # Sets parent.
 
         else:
-            # Create a value container.
-            out = ValueNode(
+            # Create a parse node.
+            out = ParsedNode(
                 raw_data, parser=parser)
 
         #

@@ -11,6 +11,7 @@ from .ast_parser import Parser
 from .containers import Container
 from .nodes import Node, ParsedNode
 from threading import RLock
+from . import exceptions
 
 
 class _RawKeyPatterns:
@@ -44,7 +45,7 @@ class _RawKeyPatterns:
     """
 
     RAW_KEY_PATTERN = re.compile(
-        f'(?P<name>{pxs.VARNAME})'
+        f'(?P<key>{pxs.VARNAME})'
         r'('
         f'\\s*:\\s*(?P<types>({TYPE_PATTERN}))?'
         # Modifiers could be better checked. Should be a callable or tuple.
@@ -60,7 +61,7 @@ class KeyNode(ParsedNode):
     """
     Key nodes represent a Python dictionary entry and as such, they must always be used as :class:`DictContainer` children. Key nodes have
 
-    1. a :attr:`name` attribute of type ``str`` containing a valid Python variable name and
+    1. a :attr:`key` attribute of type ``str`` containing a valid Python variable name and
     2. a :attr:`value` attribute of type :class:`ValueNode`, :class:`DictNode` or :class:`ListNode`.
 
 
@@ -69,7 +70,7 @@ class KeyNode(ParsedNode):
 
     Key nodes can be initialized from a raw string in the format |raw key format|, where
 
-    * **name** will be used to set :attr:`KeyNode.name` and must be a valid variable name;
+    * **key** will be used to set :attr:`KeyNode.key` and must be a valid variable name;
     * **types** is either a valid type in the parser's context, an xerializer-recognized string signature, or a tuple of these; and
     * **modifiers** is a callable or tuple of callables that take a node as an argument an modify it and potentially replace it.
 
@@ -122,7 +123,7 @@ class KeyNode(ParsedNode):
 
         # Extract data from raw key.
         components = self._split_raw_key(raw_key)
-        self._name = components['name']
+        self._key = components['key']
         self.raw_types = components['types']
         self.types = None
         self.raw_modifiers = components['modifiers']
@@ -170,34 +171,34 @@ class KeyNode(ParsedNode):
                 yield
 
     def __str__(self):
-        return f"KeyNode<'{self.name}'>"
+        return f"KeyNode<'{self.key}'>"
 
     @property
-    def name(self): return self._name
+    def key(self): return self._key
 
-    @name.setter
-    def name(self, new_name):
+    @key.setter
+    def key(self, new_key):
         """
-        KeyNode names can only be changed if the ``KeyNode``'s parent container is ``None``.
+        KeyNode keys can only be changed if the ``KeyNode``'s parent container is ``None``.
         """
         with self.lock:
             if self.parent is not None:
                 raise Exception(f'Remove `{self}` from parent container before re-naming.')
             else:
-                self._name = new_name
+                self._key = new_key
 
     def __hash__(self):
-        return hash(self.name)
+        return hash(self.key)
 
     def __eq__(self, val):
         """
         Compares to strings or other :class:`KeyNode`s based on the key. Together with :meth:`__hash__`, this method enables
-        using :class:`KeyNode`s as keys in :attr:`DictContainer.children` that will behave as string keys.
+        using :class:`KeyNode`s as string keys in :attr:`DictContainer.children` ``__getitem__`` calls.
         """
         if isinstance(val, str):
-            return val == self.name
+            return val == self.key
         elif isinstance(val, KeyNode):
-            return val.name == self.name
+            return val.key == self.key
 
     # @classmethod
     # def _parse_raw_key(cls, parser: Parser, raw_key: str):
@@ -212,13 +213,13 @@ class KeyNode(ParsedNode):
     @classmethod
     def _split_raw_key(cls, raw_key: str):
         """
-        Returns a dict with sub-strings 'name', 'types' and 'modifiers'. The content of 'types' and 'modifiers' will be None if unavailable.
+        Returns a dict with sub-strings 'key', 'types' and 'modifiers'. The content of 'types' and 'modifiers' will be None if unavailable.
         """
         if not (match := re.fullmatch(_RawKeyPatterns.RAW_KEY_PATTERN, raw_key)):
             # TODO: Add the file, if available, to the error message.
             raise Exception(f'Invalid described key syntax `{raw_key}`.')
         else:
-            return {key: match[key] for key in ['name', 'types', 'modifiers']}
+            return {key: match[key] for key in ['key', 'types', 'modifiers']}
 
     def _parse_raw_key_component(self, component: Optional[str]):
         """
@@ -232,16 +233,45 @@ class KeyNode(ParsedNode):
 
     def _unsafe_resolve(self):
         """
-        Returns the resolved name and value as a tuple.
+        Returns the resolved key and value as a tuple.
         """
         #
         with self.lock:
-            name = self.name
+            key = self.key
             value = self.value.resolve()
             #
             if self.types and not isinstance(value, self.types):
                 raise TypeError(f'Invalid type {type(value)}. Expected one of {self.types}.')
-            return name, value
+            return key, value
+
+    def get_child_qual_name(self, child_node):
+        """
+        Key nodes and their value nodes have similar qualified names differentiated only by a ``'*'`` character before the key.
+
+        .. test-code::
+
+          from xerializer.cli_tools.tree_builder import AlphaConf
+
+          ac = AlphaConf({'node0': {'node1': 1}})
+
+          # Refer to the value node.
+          node = ac['node0']['node1']
+          assert node==ac.children['node0'].children['node1'].value
+          assert node.qual_name == 'node0.node1'
+
+          # Refer to the key node.
+          node = ac['node0']['*node1']
+          assert node==ac.children['node0'].children['node1']
+          assert node.qual_name == 'node0.*node1'
+
+        """
+
+        if child_node is self.value:
+            # DictContainer objects can refer to the key or value node directly.
+            # See :meth:`DictContainer.__getitem__`.
+            return self.parent._derive_qual_name(f'{self.key}')
+        else:
+            raise exceptions.NotAChildOfError(child_node, self)
 
 
 @dataclass
@@ -252,19 +282,19 @@ class DictContainer(Container):
 
     children: Dict[Node, Node] = None
     # Both key and value will be the same KeyNode, ensuring a single source for the
-    # node name.
+    # node key.
     #
     # This approach will also behave in a way similar to dictionaries when inserting nodes
-    # with the same name. Node indexing can be done using a key that is the KeyNode or the
-    # node name as a string,  a behavior enable by the KeyNodes.__eq__ implementation.
+    # with the same key. Node indexing can be done using a key that is the KeyNode or the
+    # node key as a string,  a behavior enable by the KeyNodes.__eq__ implementation.
     #
     # Using a set seemed like a more natural solution, but I was unable to
     # retrieve an object from a set given a matching key (I tried `node_set.intersection(key)`,
     # and `{key}.intersection(node_set)` )
     #
-    # WARNING: Changing the name of a key node without taking care that
+    # WARNING: Changing the key of a key node without taking care that
     # that node is not a part of a dictionary where another KeyNode exists with the
-    # same name will result in unexpected behavior.
+    # same key will result in unexpected behavior.
 
     def __init__(self, **kwargs):
         self.children = {}
@@ -272,13 +302,13 @@ class DictContainer(Container):
 
     def add(self, node: KeyNode):
         """
-        Adds the node to the container or replaces the node with the same name if one exists.
+        Adds the node to the container or replaces the node with the same key if one exists.
         The node's parent is set to ``self``.
         """
         with self.lock, node.lock:
             if node.parent is not None:
                 raise Exception('Attempted to add a node that already has a parent.')
-            # Remove node of same name, if it exists.
+            # Remove node of same key, if it exists.
             self.remove(node, safe=True)
             # Add the new node.
             node.parent = self
@@ -286,14 +316,14 @@ class DictContainer(Container):
 
     def remove(self, node: Union[KeyNode, str], safe=False) -> KeyNode:
         """
-        Removes the child node with the same name as ``node`` from the container.
+        Removes the child node with the same key as ``node`` from the container.
 
         The removed node's parent is set to ``None`` and the node is returned.
 
-        :param node: The name or node whose name will serve as a key.
+        :param node: The key or node whose key will serve as a key.
         :param safe: Whether to ignore non-existing keys.
 
-        .. warning:: The remove node is only guaranteed to match the input node in name.
+        .. warning:: The removed node is only guaranteed to match the input node in key.
         """
         with self.lock, (nullcontext(None) if isinstance(node, str) else node.lock):
             if popped_node := self.children.pop(node, *((None,) if safe else tuple())):
@@ -309,5 +339,23 @@ class DictContainer(Container):
     def __getitem__(self, key: str):
         """
         Returns the resolved value for the specified key.
+
+        By default, the returned node is the :class:`ValueNode` child of the referred :class:`KeyNode`.
+
+        To instead the obtain the :class:`KeyNode`, prepended the input key string with a ``'*'`` character.
         """
-        return self.children[key].value
+        if key[:1] == '*':
+            return self.children[key[1:]]
+        else:
+            return self.children[key].value
+
+    def get_child_qual_name(self, node: KeyNode):
+        """
+        Prepends a ``'*'`` character to the input key node's key before building the qualified name. See :meth:`__getitem__`.
+        """
+
+        for child_node in self.children:
+            if node is child_node:
+                return self._derive_qual_name(f'*{node.key}')
+            else:
+                raise exceptions.NotAChildOfError(child_node, self)

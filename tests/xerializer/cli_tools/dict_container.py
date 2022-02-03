@@ -4,7 +4,9 @@ import re
 from unittest import TestCase
 from pglib.py import setdefaultattr
 from xerializer.cli_tools.ast_parser import Parser
-from xerializer.cli_tools.nodes import ValueNode
+from xerializer.cli_tools.nodes import ParsedNode
+
+from xerializer.cli_tools.tree_builder import AlphaConf
 
 # Test modifiers
 
@@ -22,31 +24,31 @@ class TestRawKeyPatterns(TestCase):
     def test_split_raw_key(self):
         for raw_key, expected in [
             ('my_key',
-             {'name': 'my_key',
+             {'key': 'my_key',
               'types': None,
               'modifiers': None}),
             ('my_key:int',
-             {'name': 'my_key',
+             {'key': 'my_key',
               'types': 'int',
               'modifiers': None}),
             ('my_key:"my.xerializer:Type"',
-             {'name': 'my_key',
+             {'key': 'my_key',
               'types': '"my.xerializer:Type"',
               'modifiers': None}),
             ('my_key::modif1,modif2(1,2),modif3',
-             {'name': 'my_key',
+             {'key': 'my_key',
               'types': None,
               'modifiers': 'modif1,modif2(1,2),modif3'}),
             ('my_key:int:modif1,modif2,modif3(64,"abc",True)',
-             {'name': 'my_key',
+             {'key': 'my_key',
               'types': 'int', 'modifiers':
               'modif1,modif2,modif3(64,"abc",True)'}),
             ('my_key:"my.xerializer:Type":modif1,modif2,modif3(64,"abc",True)',
-             {'name': 'my_key',
+             {'key': 'my_key',
               'types': '"my.xerializer:Type"',
               'modifiers': 'modif1,modif2,modif3(64,"abc",True)'}),
             ('my_key:(str,"my.xerializer:Type",float,int):modif1,modif2,modif3(64,"abc",True)',
-             {'name': 'my_key',
+             {'key': 'my_key',
               'types': '(str,"my.xerializer:Type",float,int)',
               'modifiers': 'modif1,modif2,modif3(64,"abc",True)'}),
         ]:
@@ -56,11 +58,11 @@ class TestRawKeyPatterns(TestCase):
 
 class TestKeyNode(TestCase):
     @classmethod
-    def get_node(cls, name='my_key'):
+    def get_node(cls, key='my_key'):
         parser = Parser({'add_val': add_val_modif})
         node = mdl.KeyNode(
-            f'{name}:int:add_val(0, "abc"),add_val(1,2),add_val(2,True)',
-            ValueNode('$10+1', parser),
+            f'{key}:int:add_val(0, "abc"),add_val(1,2),add_val(2,True)',
+            ParsedNode('$10+1', parser),
             parser=parser)
         return node
 
@@ -97,7 +99,7 @@ class TestDictContainer(TestCase):
         # should result in the same node.
         self.assertIs(container.children[node1], node2)
 
-    def test_rename_key(self):
+    def test_keynode_change_key(self):
         node1 = TestKeyNode.get_node()
         node2 = TestKeyNode.get_node()
 
@@ -109,11 +111,11 @@ class TestDictContainer(TestCase):
         self.assertIs(node2.parent, container)
 
         # Test renaming bound KeyNode
-        node1.name = 'abc'  # Works, as node1 was removed when adding node2.
+        node1.key = 'abc'  # Works, as node1 was removed when adding node2.
         with self.assertRaisesRegex(
                 Exception,
                 re.escape(f'Remove `{node2}` from parent container before re-naming.')):
-            node2.name = 'abc'
+            node2.key = 'abc'
 
         # Test removal
         self.assertEqual(
@@ -121,3 +123,20 @@ class TestDictContainer(TestCase):
         container.remove(node2)
         self.assertEqual(
             set(), set(container.children.keys()))
+
+    def test_qual_name(self):
+
+        #
+        ac = AlphaConf({'node0': {'node1': 1}})
+
+        # Refer to the key node.
+        node = ac['node0']['*node1']
+        assert type(node) is mdl.KeyNode
+        assert node is ac.node_tree.children['node0'].value.children['node1']
+        assert node.qual_name == 'node0.*node1'
+
+        # Refer to the value node.
+        node = ac['node0']['node1']
+        assert type(node) is mdl.ParsedNode
+        assert node is ac.node_tree.children['node0'].value.children['node1'].value
+        assert node.qual_name == 'node0.node1'

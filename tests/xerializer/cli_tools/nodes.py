@@ -6,7 +6,7 @@ from xerializer.cli_tools.tree_builder import AlphaConf
 from unittest import TestCase
 
 
-class TestValueNode(TestCase):
+class TestParsedNode(TestCase):
 
     def test_resolve(self):
         for raw_value, expected_resolved_value in [
@@ -21,7 +21,7 @@ class TestValueNode(TestCase):
                 ("$(1+3)/4", (1+3)/4),
         ]:
 
-            node = mdl.ValueNode(raw_value=raw_value, parser=Parser())
+            node = mdl.ParsedNode(raw_value=raw_value, parser=Parser())
             #
             self.assertEqual(resolved_value := node.resolve(), expected_resolved_value)
             self.assertIs(type(resolved_value), type(expected_resolved_value))
@@ -30,7 +30,7 @@ class TestValueNode(TestCase):
         parser = Parser()
 
         #
-        node = KeyNode('my_name', value_node := mdl.ValueNode('$n_', parser=parser), parser=parser)
+        node = KeyNode('my_name', value_node := mdl.ParsedNode('$n_', parser=parser), parser=parser)
         self.assertEqual(resolved := node.resolve(), ('my_name', value_node))
         self.assertIs(resolved[1], value_node)
 
@@ -38,5 +38,5 @@ class TestValueNode(TestCase):
         parser = Parser()
 
         #
-        node = KeyNode('my_name', value_node := mdl.ValueNode('$n_', parser=parser), parser=parser)
+        node = KeyNode('my_name', value_node := mdl.ParsedNode('$n_', parser=parser), parser=parser)
         self.assertEqual(node(), ('my_name', value_node))
