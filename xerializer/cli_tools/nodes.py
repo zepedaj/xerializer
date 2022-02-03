@@ -43,6 +43,12 @@ class Node(abc.ABC):
     The set of nodes that the current node depends on for resolution.
     """
 
+    def __str__(self):
+        return f"{type(self).__name__}<'{self.qual_name}'>"
+
+    def __repr__(self):
+        return str(self)
+
     def resolve(self):
         """
         Computes and returns the node's value, checking for cyclical references and generating meaningful error messages if these are detected.
@@ -62,17 +68,19 @@ class Node(abc.ABC):
         Any node resolutions done inside this method should instead call method :meth:`resolve`.
         """
 
-    _REF_STR_COMPONENT_PATTERN = r'((?P<parents>\.+)|(?P<index>(0|[1-9]\d*))|(?P<key>[a-zA-Z+]\w*))'
+    _REF_STR_COMPONENT_PATTERN = r'((?P<parents>\.+)|(?P<index>(0|[1-9]\d*))|(?P<key>\*?[a-zA-Z+]\w*))'
     _FULL_REF_STR_PATTERN = _REF_STR_COMPONENT_PATTERN + '+'
     # Compile the patterns.
     _REF_STR_COMPONENT_PATTERN = re.compile(_REF_STR_COMPONENT_PATTERN)
     _FULL_REF_STR_PATTERN = re.compile(_FULL_REF_STR_PATTERN)
 
-    def __call__(self, ref: str = '.', calling_node=None):
+    def node_from_ref(self, ref: str = ''):
         """
-        Retrieves the resolved value of a dependent node relative to ``self`` using a dot-separated reference string.
+        Returns the node indicated by the input reference string (a.k.a. "ref string"). Ref strings have the same syntax as :attr:`qualified names<qual_name>` but are interpreted relative to ``self`` rather than ``root``.
 
-        The string can contain a sequence of dot-separated keys or integer. A sequence of ``N`` contiguous dots refers to the ``N-1``-th parent node. Omitting the reference string will resolve the entire node tree
+        When called from the root node, this method inverts a qualified name, returning the corresponding node.
+
+        Similar to :attr:`qual_name`s, ref strings can contain a sequence of dot-separated keys or integer. An empty ref string will refer to ``self``, and starred keys will reffer to a dictionary container's key node rather than its value node. In addition to this, ref strings can use a sequence of ``N`` contiguous dots to refer to the ``N-1``-th parent node. 
 
         .. rubric:: Examples
 
@@ -115,7 +123,13 @@ class Node(abc.ABC):
             else:
                 raise Exception('Unexpected case!')
 
-        # Resolve the node
+        return node
+
+    def __call__(self, ref: str = '.', calling_node=None):
+        """
+        Retrieves the node with the specified reference string relative to ``self`` and resolves it.
+        """
+        node = self.node_from_ref(ref)
         return node.resolve()
 
     # @property
@@ -149,7 +163,6 @@ class Node(abc.ABC):
             f'{_qual_name}.' if (_qual_name := self.qual_name) else '') + child_name
 
 
-@dataclass
 class ParsedNode(Node):
     """
     Parsed nodes are nodes that have no children but might contain node references and python expressions that need to be resolved.

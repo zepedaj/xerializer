@@ -6,10 +6,11 @@ from .nodes import Node
 from typing import List, Union
 
 
-@dataclass
 class Container(Node):
 
-    lock: RLock = field(default_factory=RLock)
+    def __init__(self, **kwargs):
+        self.lock = RLock()
+        super().__init__(**kwargs)
 
     @property
     @abc.abstractmethod

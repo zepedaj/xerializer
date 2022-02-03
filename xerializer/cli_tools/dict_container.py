@@ -170,9 +170,6 @@ class KeyNode(ParsedNode):
             else:
                 yield
 
-    def __str__(self):
-        return f"KeyNode<'{self.key}'>"
-
     @property
     def key(self): return self._key
 
@@ -246,7 +243,11 @@ class KeyNode(ParsedNode):
 
     def get_child_qual_name(self, child_node):
         """
-        Key nodes and their value nodes have similar qualified names differentiated only by a ``'*'`` character before the key.
+        Returns the dictionary-container-relative qualified name.
+
+        Key nodes (respectively, their value nodes) can be accessed directly by indexing the parent :class:`DictContainer` with a ``'*'``-prefixed key (non-prefixed key) as an index. E.g., the ref string ``'*key'`` and ``'key'`` will indicate, respectively, the key node of key ``'key'`` and its value node.
+
+        .. rubric:: Example
 
         .. test-code::
 
@@ -269,12 +270,13 @@ class KeyNode(ParsedNode):
         if child_node is self.value:
             # DictContainer objects can refer to the key or value node directly.
             # See :meth:`DictContainer.__getitem__`.
-            return self.parent._derive_qual_name(f'{self.key}')
+            if not self.parent:
+                raise Exception('Attempted to retrieve the qualified name of an unbounded KeyNode.')
+            return self.parent._derive_qual_name(self.key)
         else:
             raise exceptions.NotAChildOfError(child_node, self)
 
 
-@dataclass
 class DictContainer(Container):
     """
     Contains a dictionary node. Adding and removing entries to this container should be done entirely using :meth:`add` and :meth:`remove` to ensure correct handling of parent/child relationships.

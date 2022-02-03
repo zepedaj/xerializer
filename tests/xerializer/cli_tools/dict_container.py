@@ -129,14 +129,19 @@ class TestDictContainer(TestCase):
         #
         ac = AlphaConf({'node0': {'node1': 1}})
 
+        #
+        assert ac.node_tree.qual_name == ''
+
         # Refer to the key node.
         node = ac['node0']['*node1']
         assert type(node) is mdl.KeyNode
         assert node is ac.node_tree.children['node0'].value.children['node1']
         assert node.qual_name == 'node0.*node1'
+        assert ac.node_tree.node_from_ref(node.qual_name) is node
 
         # Refer to the value node.
         node = ac['node0']['node1']
         assert type(node) is mdl.ParsedNode
         assert node is ac.node_tree.children['node0'].value.children['node1'].value
         assert node.qual_name == 'node0.node1'
+        assert ac.node_tree.node_from_ref(node.qual_name) is node
