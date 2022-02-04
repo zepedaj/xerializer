@@ -2,14 +2,13 @@
 .. |raw key format| replace:: ``'name[:<types>[:<modifiers>]]'``
 """
 
-from dataclasses import dataclass
 from contextlib import contextmanager, nullcontext
 from typing import Union, Dict, Optional
 import re
 from .parser import pxs, AutonamePattern
 from .ast_parser import Parser
 from .containers import Container
-from .nodes import Node, ParsedNode
+from .nodes import Node, ParsedNode, FLAGS
 from threading import RLock
 from . import exceptions
 
@@ -117,6 +116,10 @@ class KeyNode(ParsedNode):
         self.value = value
         self.lock = RLock()
         super().__init__(self, parser=parser, **kwargs)
+
+    @property
+    def hidden(self):
+        return super().hidden or FLAGS.HIDDEN in self.value.flags
 
     def modify(self, safe=False):
         """
@@ -308,7 +311,7 @@ class DictContainer(Container):
         """
         Returns the resolved dictionary.
         """
-        return dict(child.resolve() for child in self.children.values())
+        return dict(child.resolve() for child in self.children.values() if not child.hidden)
 
     def __getitem__(self, key: str):
         """
@@ -318,6 +321,8 @@ class DictContainer(Container):
 
         To instead the obtain the :class:`KeyNode`, prepended the input key string with a ``'*'`` character.
         """
+        if not isinstance(key, str):
+            raise Exception(f'Expected a string key but got `{key}`.')
         if key[:1] == '*':
             return self.children[key[1:]]
         else:

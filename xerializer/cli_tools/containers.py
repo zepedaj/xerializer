@@ -75,7 +75,7 @@ class ListContainer(Container):
 
     def _unsafe_resolve(self):
         with self.lock:
-            return [n.resolve() for n in self.children]
+            return [n.resolve() for n in self.children if not n.hidden]
 
     def get_child_qual_name(self, child_node):
 

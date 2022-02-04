@@ -43,12 +43,12 @@ class TestParsedNode(TestCase):
         node = KeyNode('my_name', value_node := mdl.ParsedNode('$n_', parser=parser), parser=parser)
         self.assertEqual(node(), ('my_name', value_node))
 
-    def test__node_from_ref__qual_name(self):
+    def test_qual_name(self):
 
         #
         ac = AlphaConf({'node0': {'node1': 1}})
 
-        for root, ref_node_type_value_3s in [
+        for root, ref_str__exp_node__exp_type__exp_value in [
             # Dict-of-dict
             (_root := AlphaConf(
                 _raw_data := {'node0': {'node1': 1}}).node_tree,
@@ -78,7 +78,9 @@ class TestParsedNode(TestCase):
                  ('2.1.e', _root.children[2][1]['e'], ParsedNode, _raw_data[2][1]['e']),
             ]),
         ]:
-            for ref, expected_node, expected_type, expected_value in ref_node_type_value_3s:
+            for ref, expected_node, expected_type, expected_value in \
+                    ref_str__exp_node__exp_type__exp_value:
+                #
                 actual_node = root.node_from_ref(ref)
                 assert type(expected_node) is expected_type
                 assert type(actual_node) is expected_type
@@ -87,4 +89,25 @@ class TestParsedNode(TestCase):
                 assert actual_node() == expected_value
 
     def test_node_from_ref(self):
+        #
+        for root, ref__expected_node__tuples in [
+            (r_ :=
+             AlphaConf(
+                 _raw_data := [
+                     0,
+                     {'a': 1, 'b': 2, 'c': [3, 4]},
+                     [5, {'d': 6, 'e': 7}, 8],
+                 ]).node_tree,
+             [
+                 (r_.node_from_ref('1.b...c'),
+                  r_[1]['c']),
+                 #
+                 (r_[1]['c'].node_from_ref('....2.1.d'),
+                  r_[2][1]['d'])]
+             )]:
+
+            for node_from_ref, expected_node in ref__expected_node__tuples:
+                self.assertIs(node_from_ref, expected_node)
+
+    def test_hidden_resolution(self):
         pass

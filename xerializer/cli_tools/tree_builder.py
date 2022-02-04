@@ -2,22 +2,32 @@
 
 from .containers import ListContainer
 from .dict_container import DictContainer, KeyNode
-from .nodes import ParsedNode
+from .nodes import ParsedNode, Node
 from .ast_parser import Parser
+from . import varnames
 
 
 class AlphaConf:
+
+    parser: Parser
+    """
+    The parser used when parsing :class:`ParsedNode` nodes.
+    """
+    node_tree: Node
+    """
+    The root node.
+    """
 
     def __init__(self, raw_data, context: dict = {}, parser=None):
         """
         :param raw_data: The data to convert to an :class:`AlphaConf` object.
         :param context: Extra parameters to add to the parser context.
-        :param parser: The parser to use (instantiated internally by default).
+        :param parser: The parser to use (instantiated internally by default). If a parser is provided, ``context`` is ignored.
         """
         self.parser = parser or Parser(context)
         self.node_tree = self.build_node_tree(raw_data, parser=self.parser)
         # self.node_tree.modify() # Apply modifiers.
-        self.parser.register('r_', self.node_tree)
+        self.parser.register(varnames.ROOT_NODE_VAR_NAME, self.node_tree)
 
     @classmethod
     def build_node_tree(cls, raw_data, parser, parent=None):

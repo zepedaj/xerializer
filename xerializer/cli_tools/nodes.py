@@ -4,12 +4,11 @@ from dataclasses import dataclass, field
 from .modifiers import parent
 import abc
 from .ast_parser import Parser
-from typing import Any, Set, Optional, List
+from typing import Any, Set, Optional
 from enum import Enum, auto
 from . import varnames
 import re
 from .resolving_node import ResolvingNode
-from inspect import stack
 
 
 def _kw_only():
@@ -46,6 +45,15 @@ class Node(abc.ABC):
     def __repr__(self):
         return str(self)
 
+    @property
+    def hidden(self):
+        """
+        Returns ``True`` if the node or any ancestor node is marked as hidden. With the exception of the root node (root nodes cannot be hidden), hidden nodes are not included in resolved content. Hiden nodes can, however, be referred to in ``$``-strings.
+        """
+        if (FLAGS.HIDDEN in self.flags) or (
+                False if not self.parent else self.parent.hidden):
+            pass
+
     def resolve(self):
         """
         Computes and returns the node's value, checking for cyclical references and generating meaningful error messages if these are detected.
@@ -63,6 +71,7 @@ class Node(abc.ABC):
         Any node resolutions done inside this method should instead call method :meth:`resolve`.
         """
 
+    # Regular expressions for ref strings.
     _REF_STR_COMPONENT_PATTERN = r'((?P<parents>\.+)|(?P<index>(0|[1-9]\d*))|(?P<key>\*?[a-zA-Z+]\w*))'
     _FULL_REF_STR_PATTERN = _REF_STR_COMPONENT_PATTERN + '*'
     # Compile the patterns.
@@ -75,7 +84,7 @@ class Node(abc.ABC):
 
         When called from the root node, this method inverts a qualified name, returning the corresponding node.
 
-        Similar to :attr:`qual_name`s, ref strings can contain a sequence of dot-separated keys or integer. An empty ref string will refer to ``self``, and starred keys will reffer to a dictionary container's key node rather than its value node. In addition to this, ref strings can use a sequence of ``N`` contiguous dots to refer to the ``N-1``-th parent node. 
+        Similar to :attr:`qual_name`s, ref strings can contain a sequence of dot-separated keys or integer. An empty ref string will refer to ``self``, and starred keys will reffer to a dictionary container's key node rather than its value node. In addition to this, ref strings can use a sequence of ``N`` contiguous dots to refer to the ``N-1``-th parent node.
 
         .. rubric:: Examples
 
@@ -126,22 +135,6 @@ class Node(abc.ABC):
         """
         node = self.node_from_ref(ref)
         return node.resolve()
-
-    # @property
-    # def branch(self):
-    #     """
-    #     Returns the list of nodes from the root (inclusive) down to this node (inclusive).
-    #     """
-    #     branch = [self]
-    #     while (parent := branch[0].parent) is not None:
-    #         branch.insert(0, parent)
-    #     return branch
-
-    # def root(self):
-    #     """
-    #         Returns the root node.
-    #         """
-    #     return self.branch[0]
 
     @property
     def qual_name(self):
