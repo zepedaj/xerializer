@@ -9,6 +9,7 @@ from enum import Enum, auto
 from . import varnames
 import re
 from .resolving_node import ResolvingNode
+from inspect import stack
 
 
 def _kw_only():
@@ -38,13 +39,9 @@ class Node(abc.ABC):
     """
     The parent node. This field is handled by container nodes and should not be set explicitly.
     """
-    dependencies: List['Node'] = field(default_factory=list)
-    """
-    The set of nodes that the current node depends on for resolution.
-    """
 
     def __str__(self):
-        return f"{type(self).__name__}<'{self.qual_name}'>"
+        return f"{type(self).__name__}@'{self.qual_name}'"
 
     def __repr__(self):
         return str(self)
@@ -54,9 +51,7 @@ class Node(abc.ABC):
         Computes and returns the node's value, checking for cyclical references and generating meaningful error messages if these are detected.
         """
 
-        # Set up marker variable to track node dependencies.
-        __resolving_node__ = ResolvingNode.find()
-        __resolving_node__.add_dependency(self)  # Checks for reference cycles.
+        # Set up marker variable that is used to track node dependencies.
         __resolving_node__ = ResolvingNode(self)
 
         return self._unsafe_resolve()
@@ -69,7 +64,7 @@ class Node(abc.ABC):
         """
 
     _REF_STR_COMPONENT_PATTERN = r'((?P<parents>\.+)|(?P<index>(0|[1-9]\d*))|(?P<key>\*?[a-zA-Z+]\w*))'
-    _FULL_REF_STR_PATTERN = _REF_STR_COMPONENT_PATTERN + '+'
+    _FULL_REF_STR_PATTERN = _REF_STR_COMPONENT_PATTERN + '*'
     # Compile the patterns.
     _REF_STR_COMPONENT_PATTERN = re.compile(_REF_STR_COMPONENT_PATTERN)
     _FULL_REF_STR_PATTERN = re.compile(_FULL_REF_STR_PATTERN)
@@ -154,13 +149,6 @@ class Node(abc.ABC):
         Returns the absolute node name.
         """
         return (f'{self.parent.get_child_qual_name(self)}' if self.parent else '')
-
-    def _derive_qual_name(self, child_name: str):
-        """
-        Helper method to build a qualified name from a child of this node given that node's string (non-qualified) name.
-        """
-        return (
-            f'{_qual_name}.' if (_qual_name := self.qual_name) else '') + child_name
 
 
 class ParsedNode(Node):

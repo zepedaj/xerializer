@@ -1,46 +1,53 @@
 from xerializer.cli_tools import tree_builder as mdl
+from xerializer.cli_tools.exceptions import ResolutionCycleError
 
 from unittest import TestCase
 
 
+def path(from_node, to_node):
+    branch = [to_node]
+    while branch[0] is not from_node and branch[0].parent:
+        branch.insert(0, branch[0].parent)
+    if branch[0] is not from_node:
+        raise Exception(f'There is no path from {from_node} to {to_node}.')
+    return branch
+
+
+def compare_cycle(cycle1, cycle2):
+    return (
+        len(cycle1) == len(cycle2) and
+        all(n1 is n2 for n1, n2 in zip(cycle1, cycle2))
+    )
+
+
 class TestAlphaConf(TestCase):
 
-    def check_deps(self, node, expected_deps):
-        # Check they match.
-        self.assertEqual(
-            actual_deps := set(id(x) for x in node.dependencies),
-            set(id(x) for x in expected_deps))
-        # Check they're unique.
-        self.assertEqual(len(actual_deps), len(node.dependencies))
-
-    def test_check_deps(self):
-
-        ac = mdl.AlphaConf(
-            ['abc',
-             {'a': 2, 'b': '$3+1', 'c': "$'xyz'", 'd': [1, 2, "$r_('0')", "$r_[2]() + 3"]},
-             2,
-             {'e': '$2**3'}])
-
-        ac.resolve()
-
-        # Root
-        self.check_deps(ac.node_tree, [ac[k] for k in range(4)])
-
-        # List
-        self.check_deps(ac[0], [])
-        self.check_deps(ac[1], [ac[1][key].parent for key in 'abcd'])
-        self.check_deps(ac[2], [])
-        self.check_deps(ac[3], [ac[3]['e'].parent])
-
-        # Dict keys
-        for key_node in (
-                [ac[1][key].parent for key in 'abcd'] +
-                [ac[3]['e'].parent]):
-            self.check_deps(key_node, [key_node.value])
-
-        # Nested call dependecies
-        self.check_deps(ac[1]['d'][2], [ac[0]])
-        self.check_deps(ac[1]['d'][3], [ac[2]])
-
     def test_detect_cycles(self):
-        raise Exception("Not implemented")
+
+        for tree, expected_cycle in [
+                #
+                (root := mdl.AlphaConf(
+                    ['abc',
+                     {'a': 2, 'b': '$3+1', 'c': "$'xyz'", 'd': [1, 2, "$r_('0')", "$r_[2]() + 3"]},
+                     2,
+                     {'e': '$2**3', 'f': '$r_()'},
+                     ]).node_tree,
+                 path(root, root[3]['f'])+[root]),
+                #
+                (r_ := mdl.AlphaConf(
+                    ['abc',
+                     {
+                         'a': 2, 'b': '$r_[2]()', 'c': 3,
+                         'd': [1, 2, 3, 4]},
+                     '$r_[3]()',
+                     {'e': '$2**3', 'f': "$r_[1]['b']()"},
+                     ]).node_tree,
+                 [r_[1]['b'], r_[2], r_[3], r_[3]['*f'], r_[3]['f'], r_[1]['b']]),
+        ]:
+
+            try:
+                val = tree.resolve()
+            except ResolutionCycleError as err:
+                self.assertTrue(compare_cycle(err.cycle, expected_cycle))
+            else:
+                raise Exception('Expected error!')

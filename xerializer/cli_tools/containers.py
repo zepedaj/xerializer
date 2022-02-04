@@ -40,8 +40,14 @@ class Container(Node):
         Returns the name of the specified child in the container as a string.
         """
 
+    def _derive_qual_name(self, child_name: str):
+        """
+        Helper method to build a qualified name from a child of this node given that node's string (non-qualified) name.
+        """
+        return (
+            f'{_qual_name}.' if (_qual_name := self.qual_name) else '') + child_name
 
-@dataclass
+
 class ListContainer(Container):
 
     children: List[Node] = None
@@ -52,6 +58,7 @@ class ListContainer(Container):
 
     def add(self, node: Node):
         with self.lock:
+            node.parent = self
             self.children.append(node)
 
     def remove(self, index: Union[int, Node]):

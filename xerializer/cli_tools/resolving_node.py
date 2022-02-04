@@ -1,34 +1,53 @@
 from dataclasses import dataclass
 from inspect import stack
 from typing import Optional
+from xerializer.cli_tools.exceptions import ResolutionCycleError
 
 
 @dataclass
 class ResolvingNode:
     """
-    Denotes a node that is being resolved further down in the call stack. A given node being resolved will be added to the first ResolvingNode found going down the call stack.
+    This class is a special marker class used as part of the node resolution cycle detection mechanism.  For this mechanism to work correctly, this class should only be used inside method :meth:`~xerializer.cli_tools.nodes.Node.resolve`. Classes overloading that method should take care to call the super method or instantiate this object in a similar manner.
     """
     node: Optional  # : Optional['Node']
 
-    @classmethod
-    def find(self):
+    def __init__(self, node):
         """
-        Searches down the stack for the first variable of name `__resolving_node__` and type :class:`ResolvingNode`.
+        :param node: The node currently being resolved.
+        """
+        self.node = node
+        self.resolving_dependent = self.get_resolving_dependent()
+        self.check_no_cycle()
+
+    def check_no_cycle(self):
+        """
+        Verifies that no resolution cycles will occur as part of ``self.node``'s resolution and raises a :class:`ResolutionCycleError` otherwise.
+        """
+        cycle = [self.node]
+        for node in self.dependents():
+            cycle.append(node)
+            if self.node is node:
+                raise ResolutionCycleError(cycle[::-1])
+
+    @staticmethod
+    def get_resolving_dependent() -> 'ResolvingNode':
+        """
+        Returns the resolving node whose :meth:`resolve` method called the current node's (``self.node``'s) :meth:`resolve` method.
+
+        This is done by searching down the stack for the first variable of name `__resolving_node__` and type :class:`ResolvingNode`.
         """
         call_stack = stack()
         for call in call_stack:
-            if resolving_node := call.frame.f_locals.get('__resolving_node__', None):
-                if not isinstance(resolving_node, ResolvingNode):
-                    raise Exception(
-                        f'Unexpected type {type(resolving_node)} for variable `__resolving_node__` in function {call.function}.')
-                else:
-                    return resolving_node
+            if resolving_dependent := call.frame.f_locals.get('__resolving_node__', None):
+                return resolving_dependent
 
-        return ResolvingNode(None)
+        return None
 
-    def add_dependency(self, dependency_node):
-        if self.node is not None:
-            if not any(dependency_node is x for x in self.node.dependencies):
-                self.node.dependencies.append(dependency_node)
-            else:
-                raise Exception('Found a dependency cycle!')
+    def dependents(self):
+        """
+        Iterates over all the nodes whose resolution depends on this node's resolution.
+        """
+        resolving_dependent = self.resolving_dependent
+        while resolving_dependent is not None:
+            yield resolving_dependent.node
+            resolving_dependent = resolving_dependent.resolving_dependent

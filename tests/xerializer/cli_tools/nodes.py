@@ -1,5 +1,7 @@
 from xerializer.cli_tools import nodes as mdl
-from xerializer.cli_tools.dict_container import KeyNode
+from xerializer.cli_tools.nodes import ParsedNode
+from xerializer.cli_tools.dict_container import KeyNode, DictContainer
+from xerializer.cli_tools.containers import ListContainer
 from xerializer.cli_tools.ast_parser import Parser
 from xerializer.cli_tools.tree_builder import AlphaConf
 
@@ -40,3 +42,49 @@ class TestParsedNode(TestCase):
         #
         node = KeyNode('my_name', value_node := mdl.ParsedNode('$n_', parser=parser), parser=parser)
         self.assertEqual(node(), ('my_name', value_node))
+
+    def test__node_from_ref__qual_name(self):
+
+        #
+        ac = AlphaConf({'node0': {'node1': 1}})
+
+        for root, ref_node_type_value_3s in [
+            # Dict-of-dict
+            (_root := AlphaConf(
+                _raw_data := {'node0': {'node1': 1}}).node_tree,
+             [
+                 ('', _root, DictContainer,
+                  _raw_data),
+                 ('node0', _root.children['node0'].value, DictContainer,
+                  _raw_data['node0']),
+                 ('*node0', _root.children['node0'], KeyNode,
+                  ('node0', _raw_data['node0'])),
+                 ('node0.node1', _root.children['node0'].value.children['node1'].value,
+                  ParsedNode, _raw_data['node0']['node1']),
+            ]),
+            # ParsedNode
+            (_root := ParsedNode('abc', None),
+             [
+                 ('', _root, ParsedNode, 'abc'),
+            ]),
+            # List
+            (_root := AlphaConf(
+                _raw_data := [0, {'a': 1, 'b': 2, 'c': [3, 4]}, [5, {'d': 6, 'e': 7}, 8], ]).node_tree,
+             [
+                 ('', _root, ListContainer, _raw_data),
+                 ('0', _root.children[0], ParsedNode, _raw_data[0]),
+                 ('1.c.1', _root[1]['c'][1], ParsedNode, _raw_data[1]['c'][1]),
+                 ('1.*c', _root[1]['*c'], KeyNode, ('c', _raw_data[1]['c'])),
+                 ('2.1.e', _root.children[2][1]['e'], ParsedNode, _raw_data[2][1]['e']),
+            ]),
+        ]:
+            for ref, expected_node, expected_type, expected_value in ref_node_type_value_3s:
+                actual_node = root.node_from_ref(ref)
+                assert type(expected_node) is expected_type
+                assert type(actual_node) is expected_type
+                assert actual_node is expected_node
+                assert actual_node.qual_name == ref
+                assert actual_node() == expected_value
+
+    def test_node_from_ref(self):
+        pass

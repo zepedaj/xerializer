@@ -94,24 +94,6 @@ class KeyNode(ParsedNode):
 
     """
 
-    # _name: str = field(default_factory=_kw_only)
-    # """
-    # Changing the name must go through the name.setter() call.
-    # """
-    # value: 'Node' = field(default_factory=_kw_only)
-    # """
-    # Can be any :class:`Node`-derived type except another :class:`KeyNode`.
-    # """
-    # modifiers: Tuple[Callable[[Node], Optional[Node]]] = None
-    # """
-    # Tuple of modifiers to apply sequentially to ``self``. See :ref:`key node life cycle`.
-    # """
-    # types: Tuple[Union[str, type]] = None
-    # """
-    # Tuple of expected resolved types.
-    # """
-    # _lock: RLock = None
-
     def __init__(self, raw_key: str, value: Node, parser: Parser, **kwargs):
         """
         Initializes the node, setting the parent of value as ``self``.
@@ -196,16 +178,6 @@ class KeyNode(ParsedNode):
             return val == self.key
         elif isinstance(val, KeyNode):
             return val.key == self.key
-
-    # @classmethod
-    # def _parse_raw_key(cls, parser: Parser, raw_key: str):
-    #     match = cls._split_raw_key(raw_key)
-    #     out = {
-    #         'name': match['name'],
-    #         'types': cls._parse_raw_key_component(parser, match['types']),
-    #         'modifiers': cls._parse_raw_key_component(parser, match['modifiers']),
-    #     }
-    #     return out
 
     @classmethod
     def _split_raw_key(cls, raw_key: str):
@@ -359,5 +331,5 @@ class DictContainer(Container):
         for child_node in self.children:
             if node is child_node:
                 return self._derive_qual_name(f'*{node.key}')
-            else:
-                raise exceptions.NotAChildOfError(child_node, self)
+
+        raise exceptions.NotAChildOfError(child_node, self)
