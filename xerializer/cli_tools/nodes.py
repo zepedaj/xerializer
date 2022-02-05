@@ -1,6 +1,6 @@
 """
 """
-from .exceptions import InvalidRefStr
+from .exceptions import InvalidRefStr, InvalidRefStrComponent
 from dataclasses import dataclass, field
 from .modifiers import parent
 import abc
@@ -117,15 +117,19 @@ class Node(abc.ABC):
 
         # Check ref string
         if not re.fullmatch(self._FULL_REF_STR_PATTERN, ref):
-            raise InvalidRefStr(f'Invalid reference string `{ref}`.')
+            raise InvalidRefStr(ref)
 
         # Break up ref string into list of components.
         _ref_components = [
             x['component'] for x in re.finditer(self._REF_STR_COMPONENT_PATTERN, ref)]
 
         node = self
+
         for _component in _ref_components:
-            node = node._node_from_ref_component(_component)
+            try:
+                node = node._node_from_ref_component(_component)
+            except InvalidRefStrComponent:
+                raise InvalidRefStr(ref, _component)
 
         return node
 
@@ -133,16 +137,22 @@ class Node(abc.ABC):
         """
         Each node type should know how to handle specific string ref component patterns.
         If the ref component is not recognied by the type, it should punt handling to the parent
-        type. 
+        type. The implementation in :meth:`Node._node_from_ref_component` is the last resort, and it can only handle
+        dot-references to parents (e.g., "....") or self (e.g., "."). 
 
-        The implementation in :meth:`Node._node_from_ref_component` should be the last resort, and it can only handle
-        dot-references to parents (e.g., "....") or self (e.g., ".")
+        This method also provides a hacky way for ref strings to skip :class:`KeyNode`s when these are parents in ref strings.
         """
+        from .dict_container import KeyNode
         if re.fullmatch(r'\.+', ref_component):
             # Matches a sequence of dots (e.g., "....")
-            return parent(self, len(ref_component)-1)
+            node = self
+            for _ in range(len(ref_component)-1):
+                node = node.parent
+                if isinstance(node, KeyNode):
+                    node = node.parent
+            return node
         else:
-            raise Exception(f'Invalid ref string component {ref_component}.')
+            raise InvalidRefStrComponent(ref_component)
 
     def __call__(self, ref: str = '.', calling_node=None):
         """

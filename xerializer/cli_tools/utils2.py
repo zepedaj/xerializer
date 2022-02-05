@@ -1,3 +1,6 @@
+class _Unassigned:
+    pass
+
 
 class Namespace:
     """

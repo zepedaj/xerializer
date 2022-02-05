@@ -99,10 +99,10 @@ class TestParsedNode(TestCase):
                      [5, {'d': 6, 'e': 7}, 8],
                  ]).node_tree,
              [
-                 (r_.node_from_ref('1.b...c'),
+                 (r_.node_from_ref('1.b..c'),
                   r_[1]['c']),
                  #
-                 (r_[1]['c'].node_from_ref('....2.1.d'),
+                 (r_[1]['c'].node_from_ref('...2.1.d'),
                   r_[2][1]['d'])]
              )]:
 
