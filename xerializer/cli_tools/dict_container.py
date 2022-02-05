@@ -257,6 +257,8 @@ class DictContainer(Container):
     Contains a dictionary node. Adding and removing entries to this container should be done entirely using :meth:`add` and :meth:`remove` to ensure correct handling of parent/child relationships.
     """
 
+    _REF_COMPONENT_PATTERN = re.compile(r'\*?[a-zA-Z_]\w*')
+
     children: Dict[Node, Node] = None
     # Both key and value will be the same KeyNode, ensuring a single source for the
     # node key.
@@ -338,3 +340,9 @@ class DictContainer(Container):
                 return self._derive_qual_name(f'*{node.key}')
 
         raise exceptions.NotAChildOfError(child_node, self)
+
+    def _node_from_ref_component(self, ref_component: str):
+        if re.fullmatch(self._REF_COMPONENT_PATTERN, ref_component):
+            return self[ref_component]
+        else:
+            return super()._node_from_ref_component(ref_component)

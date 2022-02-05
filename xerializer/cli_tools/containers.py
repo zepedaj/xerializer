@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+import re
 from .exceptions import NotAChildOfError
 import abc
 from threading import RLock
@@ -52,6 +52,8 @@ class ListContainer(Container):
 
     children: List[Node] = None
 
+    _REF_COMPONENT_PATTERN = re.compile(r'(0|[1-9]\d*)')
+
     def __init__(self, **kwargs):
         self.children = []
         super().__init__(**kwargs)
@@ -85,3 +87,9 @@ class ListContainer(Container):
                 return self._derive_qual_name(str(k))
         #
         raise NotAChildOfError(child_node, self)
+
+    def _node_from_ref_component(self, ref_component: str):
+        if re.fullmatch(self._REF_COMPONENT_PATTERN, ref_component):
+            return self[int(ref_component)]
+        else:
+            return super()._node_from_ref_component(ref_component)

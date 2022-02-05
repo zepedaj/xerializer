@@ -1,16 +1,18 @@
 """
 """
+from .exceptions import InvalidRefStr
 from dataclasses import dataclass, field
 from .modifiers import parent
 import abc
 from .ast_parser import Parser
-from typing import Any, Set, Optional
+from typing import Any, Set, Optional, List
 from enum import Enum, auto
 from . import varnames
 import re
 from .resolving_node import ResolvingNode
 
 
+# TODO: Remove this
 def _kw_only():
     """
     Provides kw-only functionality for versions ``dataclasses.field`` that do not support it.
@@ -59,8 +61,9 @@ class Node(abc.ABC):
         Computes and returns the node's value, checking for cyclical references and generating meaningful error messages if these are detected.
         """
 
-        # Set up marker variable that is used to track node dependencies.
-        __resolving_node__ = ResolvingNode(self)
+        # Set up marker variable that is used to track node dependencies
+        # using inspect.stack
+        __resolving_node__ = ResolvingNode(self)  # noqa
 
         return self._unsafe_resolve()
 
@@ -72,7 +75,8 @@ class Node(abc.ABC):
         """
 
     # Regular expressions for ref strings.
-    _REF_STR_COMPONENT_PATTERN = r'((?P<parents>\.+)|(?P<index>(0|[1-9]\d*))|(?P<key>\*?[a-zA-Z+]\w*))'
+    #_REF_STR_COMPONENT_PATTERN = r'((?P<parents>\.+)|(?P<index>(0|[1-9]\d*))|(?P<key>\*?[a-zA-Z+]\w*))'
+    _REF_STR_COMPONENT_PATTERN = r'(?P<component>(\.+|[^\.]+))'
     _FULL_REF_STR_PATTERN = _REF_STR_COMPONENT_PATTERN + '*'
     # Compile the patterns.
     _REF_STR_COMPONENT_PATTERN = re.compile(_REF_STR_COMPONENT_PATTERN)
@@ -111,23 +115,34 @@ class Node(abc.ABC):
 
         """
 
-        # Check full syntax matches.
+        # Check ref string
         if not re.fullmatch(self._FULL_REF_STR_PATTERN, ref):
-            raise Exception(f'Invalid reference string `{ref}`.')
+            raise InvalidRefStr(f'Invalid reference string `{ref}`.')
 
-        # Apply ref components.
+        # Break up ref string into list of components.
+        _ref_components = [
+            x['component'] for x in re.finditer(self._REF_STR_COMPONENT_PATTERN, ref)]
+
         node = self
-        for _key_match in re.finditer(self._REF_STR_COMPONENT_PATTERN, ref):
-            if (ref := _key_match['parents']) is not None:
-                node = parent(node, len(ref)-1)
-            elif (ref := _key_match['key']) is not None:
-                node = node[ref]
-            elif (ref := _key_match['index']) is not None:
-                node = node[int(ref)]
-            else:
-                raise Exception('Unexpected case!')
+        for _component in _ref_components:
+            node = node._node_from_ref_component(_component)
 
         return node
+
+    def _node_from_ref_component(self, ref_component: str):
+        """
+        Each node type should know how to handle specific string ref component patterns.
+        If the ref component is not recognied by the type, it should punt handling to the parent
+        type. 
+
+        The implementation in :meth:`Node._node_from_ref_component` should be the last resort, and it can only handle
+        dot-references to parents (e.g., "....") or self (e.g., ".")
+        """
+        if re.fullmatch(r'\.+', ref_component):
+            # Matches a sequence of dots (e.g., "....")
+            return parent(self, len(ref_component)-1)
+        else:
+            raise Exception(f'Invalid ref string component {ref_component}.')
 
     def __call__(self, ref: str = '.', calling_node=None):
         """
