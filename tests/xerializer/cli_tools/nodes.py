@@ -108,6 +108,3 @@ class TestParsedNode(TestCase):
 
             for node_from_ref, expected_node in ref__expected_node__tuples:
                 self.assertIs(node_from_ref, expected_node)
-
-    def test_hidden_resolution(self):
-        pass

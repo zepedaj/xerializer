@@ -26,8 +26,22 @@ class AlphaConf:
         """
         self.parser = parser or Parser(context)
         self.node_tree = self.build_node_tree(raw_data, parser=self.parser)
-        # self.node_tree.modify() # Apply modifiers.
+        self.modify()  # Apply modifiers.
         self.parser.register(varnames.ROOT_NODE_VAR_NAME, self.node_tree)
+
+    def modify(self, root=None):
+        """
+        Traverses the tree and calls method ``modify`` on all nodes that have that method.
+
+        If a node has a method ``modify``, tree traversal is not continued further down that node.
+        """
+        root = root or self.node_tree
+
+        if hasattr(root, 'modify'):
+            root.modify()
+        elif hasattr(root, 'children'):
+            for child in root.children:
+                self.modify(child)
 
     @classmethod
     def build_node_tree(cls, raw_data, parser, parent=None):

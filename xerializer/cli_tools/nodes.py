@@ -2,10 +2,9 @@
 """
 from .exceptions import InvalidRefStr, InvalidRefStrComponent
 from dataclasses import dataclass, field
-from .modifiers import parent
 import abc
 from .ast_parser import Parser
-from typing import Any, Set, Optional, List
+from typing import Any, Set, Optional
 from enum import Enum, auto
 from . import varnames
 import re
@@ -50,11 +49,10 @@ class Node(abc.ABC):
     @property
     def hidden(self):
         """
-        Returns ``True`` if the node or any ancestor node is marked as hidden. With the exception of the root node (root nodes cannot be hidden), hidden nodes are not included in resolved content. Hiden nodes can, however, be referred to in ``$``-strings.
+        Returns ``True`` if the node or any ancestor node is marked as hidden. With the exception of the root node (root nodes cannot be hidden), hidden nodes are not included in resolved content. Hiden nodes can, however, be referred to by ref strings or accessed using ``Node.__getitem__``, including as part of ``$``-strings.
         """
-        if (FLAGS.HIDDEN in self.flags) or (
-                False if not self.parent else self.parent.hidden):
-            pass
+        return (FLAGS.HIDDEN in self.flags) or (
+            False if not self.parent else self.parent.hidden)
 
     def resolve(self):
         """
