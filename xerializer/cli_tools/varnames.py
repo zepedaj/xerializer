@@ -19,3 +19,8 @@ SPHINX_DEFS = f"""
 .. |ROOT_NODE_VAR_NAME| replace:: ``{ROOT_NODE_VAR_NAME}``
 .. |FILE_ROOT_NODE_VAR_NAME| replace:: ``{FILE_ROOT_NODE_VAR_NAME}``
 """
+
+DEFAULT_EXTENSION = '.yaml'
+"""
+The default file extension.
+"""

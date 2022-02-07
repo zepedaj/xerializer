@@ -1,21 +1,32 @@
 from .ast_parser import register
+from functools import partial
 import yaml
 from .nodes import FLAGS
 from .dict_container import KeyNode
+from .nodes import Node
 from .tree_builder import AlphaConf
 from pathlib import Path
 from .functions import cwd
+from .utils2 import _Unassigned
+from .varnames import DEFAULT_EXTENSION
 
 
 @register('parent')
-def parent(node, levels=1):
+def parent(_node: Node = _Unassigned, levels=1):
     """
     Returns, for the given node, the ancestor at the specified number of levels up. Use ``levels=0`` to denote the node itself.
     """
+
+    # Check if this is a modification call or a modifier definition call.
+    node = _node
+    if node is _Unassigned:
+        return partial(parent, levels=levels)
+
+    #
     for _ in range(levels):
         node = node.parent
         if node is None:
-            raise Exception(f'Node {node} is a root node!')
+            raise Exception(f'Attempted to get the parent of root node {node}!')
     return node
 
 
@@ -25,7 +36,7 @@ def hidden(node):
 
 
 @register('load')
-def load(node: KeyNode, ext='.yaml'):
+def load(_node: KeyNode = _Unassigned, ext=DEFAULT_EXTENSION):
     """
     Resolves ``node.value`` and treats the resolved value as a file path whose data will be used to replace the ``node.value``node. If the path is relative, two possibilities exist:
 
@@ -45,8 +56,22 @@ def load(node: KeyNode, ext='.yaml'):
     5. All modifiers all applied to all nodes of the newly inserted sub-tree.
     6. Modification of the original sub-tree as part of the :meth:`AlphaConf.modify` call continues with the remaining nodes.
 
+    .. rubric:: Syntax
+
+    A modifier can be added to the modifiers list using one of these syntaxes
+
+    * load
+    * load()
+    * load(ext='.yaml')
+
+
     :param ext: The default extension to add to files without an extension.
     """
+
+    # Check if this is a modification call or a modifier definition call.
+    node = _node
+    if node is _Unassigned:
+        return partial(load, ext=ext)
 
     # Get absolute path
     path = Path(node.value())
