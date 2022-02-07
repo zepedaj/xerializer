@@ -11,23 +11,35 @@ import contextlib
 
 
 @contextlib.contextmanager
-def build_config_files():
+def build_config_files(
+        root_updates=None, root_expected_updates=None,
+        file1_updates=None, file1_expected_updates=None,
+        file2_updates=None, file2_expected_updates=None):
     # ./root.yaml
     root_dat = dict((f'root_{k}', k) for k in range(5))
     root_dat['root_5::load'] = 'subdir1/file1'
+    root_dat.update(root_updates or {})
 
     # ./subdir1/file1.yaml
     file1_dat = dict((f'file1_{k}', k) for k in range(5))
     file1_dat['file1_5::load'] = 'file2'
+    file1_dat.update(file1_updates or {})
 
     # ./subdir1/file2.yaml
     file2_dat = dict((f'file2_{k}', k) for k in range(5))
+    file2_dat.update(file2_updates or {})
 
+    #
     expected = dict(root_dat)
     expected.pop('root_5::load')
+    expected.update(root_expected_updates or {})
+    #
     expected['root_5'] = dict(file1_dat)
     expected['root_5'].pop('file1_5::load')
+    expected['root_5'].update(file1_expected_updates or {})
+    #
     expected['root_5']['file1_5'] = dict(file2_dat)
+    expected['root_5']['file1_5'].update(file2_expected_updates or {})
 
     # Build file structure
     with TemporaryDirectory() as temp_dir:

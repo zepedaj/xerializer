@@ -6,6 +6,7 @@ from xerializer.cli_tools.ast_parser import Parser
 from xerializer.cli_tools.tree_builder import AlphaConf
 
 from unittest import TestCase
+from .modifiers import build_config_files
 
 
 class TestParsedNode(TestCase):
@@ -35,6 +36,19 @@ class TestParsedNode(TestCase):
         node = KeyNode('my_name', value_node := mdl.ParsedNode('$n_', parser=parser), parser=parser)
         self.assertEqual(resolved := node.resolve(), ('my_name', value_node))
         self.assertIs(resolved[1], value_node)
+
+    def test_file_root_node_resolution(self):
+        with build_config_files(
+                #
+                file1_updates={'file1_0': "$f_['file1_1']()"},
+                file1_expected_updates={'file1_0': 1},
+                #
+                file2_updates={'file2_6': {'dict3': "$f_['file2_0']()"}},
+                file2_expected_updates={'file2_6': {'dict3': 0}},
+                #
+        ) as (path, expected):
+            ac = AlphaConf.load(path)
+            self.assertEqual(ac(), expected)
 
     def test_call(self):
         parser = Parser()

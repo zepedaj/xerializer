@@ -88,6 +88,16 @@ class Node(abc.ABC):
         return (FLAGS.HIDDEN in self.flags) or (
             False if not self.parent else self.parent.hidden)
 
+    @property
+    def file_root_node(self):
+        """
+        Returns the nearest ancestor (including self) that was loaded from a file or ``None`` if none was loaded form a file.
+        """
+        node = self
+        while node and node._source_file is None:
+            node = node.parent
+        return node
+
     def __str__(self):
         return f"{type(self).__name__}@'{self.qual_name}'"
 
@@ -220,6 +230,13 @@ class ParsedNode(Node):
     2. The string starts with `'$'`: the remainder of the string will be evaluated as a safe python expression returning the resolved value.
     3. The string starts with `'\'`: that character will be stripped and the remainder used as the resolved value.
     4. For any other character, the string itself will be the resolved value.
+
+    .. rubric:: Special context variables
+
+    Parsed node objects expose an :meth:`eval` method that automatically injects the two special node-related variables |CURRENT_NODE_VAR_NAME| and |FILE_ROOT_NODE_VAR_NAME| to the parser evaluation context:
+
+    * Variable |CURRENT_NODE_VAR_NAME| points to ``self``.
+    * Variable |FILE_ROOT_NODE_VAR_NAME| points to ``self``'s closest ancestor (including ``self``) that was loaded from a file. If no ancestor was loaded from a file, the variable is not present.
     """
 
     parser: Parser = field(default_factory=_kw_only)
@@ -234,9 +251,12 @@ class ParsedNode(Node):
 
     def eval(self, py_expr: str):
         """
-        Evaluates the python expression ``py_expr``, adding ``self`` as variable | CURRENT_NODE_VAR_NAME | in the parser evaluation context.
+        Evaluates the python expression ``py_expr``, injecting ``self`` as variable |CURRENT_NODE_VAR_NAME| in the parser evaluation context. If the node or one of its ancestors was loaded from a file, that node will also be injected to the parser evaluation context as variable |FILE_ROOT_NODE_VAR_NAME|.
         """
-        return self.parser.eval(py_expr, {varnames.CURRENT_NODE_VAR_NAME: self})
+        context = {varnames.CURRENT_NODE_VAR_NAME: self}
+        if root_node := self.file_root_node:
+            context[varnames.FILE_ROOT_NODE_VAR_NAME] = root_node
+        return self.parser.eval(py_expr, context)
 
     raw_value: str = field(default_factory=_kw_only)
 
