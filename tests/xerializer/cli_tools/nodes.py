@@ -29,7 +29,7 @@ class TestParsedNode(TestCase):
             self.assertEqual(resolved_value := node.resolve(), expected_resolved_value)
             self.assertIs(type(resolved_value), type(expected_resolved_value))
 
-    def test_current_node_resolution(self):
+    def test_current_node_special_var_eval(self):
         parser = Parser()
 
         #
@@ -37,7 +37,7 @@ class TestParsedNode(TestCase):
         self.assertEqual(resolved := node.resolve(), ('my_name', value_node))
         self.assertIs(resolved[1], value_node)
 
-    def test_file_root_node_resolution(self):
+    def test_file_root_node_special_var_eval(self):
         with build_config_files(
                 #
                 file1_updates={'file1_0': "$f_['file1_1']()"},
