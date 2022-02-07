@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 @register('cwd')
-def cwd(_):
+def cwd():
     """
     Returns the current working directory as a pathlib ``Path`` object.
 

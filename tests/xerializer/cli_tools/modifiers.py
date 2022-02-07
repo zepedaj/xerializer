@@ -23,6 +23,12 @@ def build_config_files():
     # ./subdir1/file2.yaml
     file2_dat = dict((f'file2_{k}', k) for k in range(5))
 
+    expected = dict(root_dat)
+    expected.pop('root_5::load')
+    expected['root_5'] = dict(file1_dat)
+    expected['root_5'].pop('file1_5::load')
+    expected['root_5']['file1_5'] = dict(file2_dat)
+
     # Build file structure
     with TemporaryDirectory() as temp_dir:
         temp_dir = Path(temp_dir)
@@ -34,7 +40,7 @@ def build_config_files():
         ]:
             with open(temp_dir / sub_path, 'wt') as fo:
                 yaml.dump(dat, fo)
-        yield temp_dir/'root.yaml', (root_dat, file1_dat, file2_dat)
+        yield temp_dir/'root.yaml', expected
 
 
 class TestModifiers(TestCase):
@@ -71,21 +77,10 @@ class TestModifiers(TestCase):
             self.assertEqual(resolved_value, expected_resolved_value)
 
     def test_load(self):
-        with build_config_files() as (config_file, (root_dat, file1_dat, file2_dat)):
+        # (config_file, (root_dat, file1_dat, file2_dat)):
+        with build_config_files() as (config_file, expected):
             super_root = {'super_root::load': str(config_file.absolute())}
             ac = AlphaConf(super_root)
             resolved = ac.resolve()['super_root']
 
-            for expected_dat, actual_dat in [
-                    (root_dat, resolved),
-                    (file1_dat, resolved['root_5']),
-                    (file2_dat, resolved['root_5']['file1_5'])
-            ]:
-                #
-                actual_dat = dict(actual_dat)
-                [actual_dat.pop(key) for key in list(actual_dat.keys()) if key[-1:] == '5']
-                #
-                expected_dat = dict(expected_dat)
-                [expected_dat.pop(key) for key in list(expected_dat.keys()) if key[-4:] == 'load']
-
-                self.assertEqual(actual_dat, expected_dat)
+            self.assertEqual(expected, resolved)

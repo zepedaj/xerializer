@@ -105,17 +105,16 @@ class KeyNode(ParsedNode):
         # Extract data from raw key.
         components = self._split_raw_key(raw_key)
         self._key = components['key']
-        self.raw_types = components['types']
-        self.types = None
-        self.raw_modifiers = components['modifiers']
-        self.modifiers = None
-        self.modified = False
-
         #
         value.parent = self
         self.value = value
         self.lock = RLock()
         super().__init__(self, parser=parser, **kwargs)
+
+        #
+        self.types = self._parse_raw_key_component(components['types'])
+        self.modifiers = self._parse_raw_key_component(components['modifiers'])
+        self.modified = False
 
     @property
     def hidden(self):
@@ -133,8 +132,8 @@ class KeyNode(ParsedNode):
             return
 
         # Parse types and modifiers.
-        self.types = self._parse_raw_key_component(self.raw_types)
-        self.modifiers = self._parse_raw_key_component(self.raw_modifiers)
+        #self.types = self._parse_raw_key_component(self.raw_types)
+        #self.modifiers = self._parse_raw_key_component(self.raw_modifiers)
 
         # Apply modifiers.
         node = self

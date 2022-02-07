@@ -1,4 +1,5 @@
 from xerializer.cli_tools import tree_builder as mdl
+from .modifiers import build_config_files
 
 from unittest import TestCase
 
@@ -33,3 +34,9 @@ class TestAlphaConf(TestCase):
         aconf = mdl.AlphaConf(raw_data)
         self.assertIs(
             aconf.node_tree, aconf.resolve()[1]['d'][2])
+
+    def test_load(self):
+        with build_config_files() as (path, expected):
+            ac = mdl.AlphaConf.load(path)
+            dat = ac()
+            self.assertEqual(dat, expected)

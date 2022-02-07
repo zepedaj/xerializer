@@ -1,5 +1,4 @@
-
-
+import yaml
 from .containers import ListContainer
 from .dict_container import DictContainer, KeyNode
 from .nodes import ParsedNode, Node
@@ -18,17 +17,36 @@ class AlphaConf:
     The root node.
     """
 
-    def __init__(self, raw_data, context: dict = {}, parser=None):
+    def __init__(self, raw_data, context: dict = {}, parser=None, modify=True):
         """
         :param raw_data: The data to convert to an :class:`AlphaConf` object.
         :param context: Extra parameters to add to the parser context.
         :param parser: The parser to use (instantiated internally by default). If a parser is provided, ``context`` is ignored.
         """
+
         self.parser = parser or Parser(context)
         self.node_tree = self.build_node_tree(raw_data, parser=self.parser)
         self.node_tree._alpha_conf_obj = self  # Needed to support Node.alpha_conf_obj propagation
         self.parser.register(varnames.ROOT_NODE_VAR_NAME, self.node_tree)
-        self.modify()  # Apply modifiers.
+        if modify:
+            self.modify()
+
+    @classmethod
+    def load(self, path, **kwargs):
+        """
+        Returns an :class:`AlphaConf` object built using raw data retrieved from the specified file.
+
+        :param path: The path to the file to load the raw data from.
+        :param kwargs: Extra arguments to pass to the :class:`AlphaConf` initializer.
+        """
+        with open(path, 'rt') as fo:
+            text = fo.read()
+        modify = kwargs.pop('modify', True)
+        ac = AlphaConf(raw_data := yaml.safe_load(text), modify=False, **kwargs)
+        ac.node_tree._source_file = path
+        if modify:
+            ac.modify()
+        return ac
 
     def modify(self, root=None):
         """
