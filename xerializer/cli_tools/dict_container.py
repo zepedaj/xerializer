@@ -121,17 +121,16 @@ class KeyNode(ParsedNode):
     def hidden(self):
         return super().hidden or FLAGS.HIDDEN in self.value.flags
 
-    def modify(self, safe=False):
+    def modify(self):
         """
         This function first parses the key components (``'types'`` and ``'modifiers'``) and then applies the modifiers to the node.
+
+        Calling this function a second time has no effect.
         """
 
         # Check if the modifiers have been applied.
         if self.modified:
-            if safe:
-                return
-            else:
-                raise Exception('The modifiers have already been applied!')
+            return
 
         # Parse types and modifiers.
         self.types = self._parse_raw_key_component(self.raw_types)
@@ -215,6 +214,22 @@ class KeyNode(ParsedNode):
             if self.types and not isinstance(value, self.types):
                 raise TypeError(f'Invalid type {type(value)}. Expected one of {self.types}.')
             return key, value
+
+    def replace(self, old_value=Optional[Node], new_value: Node = None):
+        """
+        Replaces the value node by a new value node. 
+
+        :param old_value: If provided, must be the current value node :attr:`value`. Use ``None`` to specify it by default. This signature is provided for consistency with the :class:`Container` signature.
+        :param new_value: The new value node.
+        """
+        with self.lock, new_value.lock:
+            old_value = old_value or self.value
+            with old_value.lock:
+                if old_value is not self.value:
+                    raise exceptions.NotAChildOfError(old_value, self)
+                old_value.parent = None
+                self.value = new_value
+                new_value.parent = self
 
     def get_child_qual_name(self, child_node):
         """
@@ -308,6 +323,16 @@ class DictContainer(Container):
             if popped_node := self.children.pop(node, *((None,) if safe else tuple())):
                 popped_node.parent = None
                 return popped_node
+
+    def replace(self, old_node: Union[str, Node], new_node: Node):
+        """
+        Removes the old node and adds the new node. Both nodes do not need to have the same hash key.
+        """
+
+        old_node = self[old_node]
+        with self.lock, new_node.lock, old_node.lock:
+            self.remove(old_node)
+            self.add(new_node)
 
     def _unsafe_resolve(self):
         """

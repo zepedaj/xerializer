@@ -26,12 +26,13 @@ class AlphaConf:
         """
         self.parser = parser or Parser(context)
         self.node_tree = self.build_node_tree(raw_data, parser=self.parser)
-        self.modify()  # Apply modifiers.
+        self.node_tree._alpha_conf_obj = self  # Needed to support Node.alpha_conf_obj propagation
         self.parser.register(varnames.ROOT_NODE_VAR_NAME, self.node_tree)
+        self.modify()  # Apply modifiers.
 
     def modify(self, root=None):
         """
-        Traverses the tree and calls method ``modify`` on all nodes that have that method.
+        Traverses the tree starting at the root and calls method ``modify`` on all nodes that have that method.
 
         If a node has a method ``modify``, tree traversal is not continued further down that node.
         """
@@ -40,7 +41,10 @@ class AlphaConf:
         if hasattr(root, 'modify'):
             root.modify()
         elif hasattr(root, 'children'):
-            for child in root.children:
+            for child in list(root.children):
+                # Some nodes might modify the node tree. Taking a snapshot here with list()
+                # avoids errors related to modifying the childrens iterable while iterating
+                # over it.
                 self.modify(child)
 
     @classmethod

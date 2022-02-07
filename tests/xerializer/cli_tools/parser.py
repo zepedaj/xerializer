@@ -7,6 +7,7 @@ import re
 class TestAutonamePattern(TestCase):
 
     def test_doc(self):
+
         # Simple auto-name pattern
         sp = mdl.AutonamePattern('(?P<htag>Hello)', names=['htag'])
 

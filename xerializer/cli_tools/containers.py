@@ -1,7 +1,6 @@
 import re
 from .exceptions import NotAChildOfError
 import abc
-from threading import RLock
 from .nodes import Node
 from typing import List, Union
 
@@ -9,7 +8,6 @@ from typing import List, Union
 class Container(Node):
 
     def __init__(self, **kwargs):
-        self.lock = RLock()
         super().__init__(**kwargs)
 
     @property
@@ -26,6 +24,12 @@ class Container(Node):
     def remove(self, node: Node):
         """
         Remove the specified node from the container.
+        """
+
+    @abc.abstractmethod
+    def replace(self, old_node: Node, new_node: Node):
+        """
+        Replaces an old node with a new node.
         """
 
     def __getitem__(self, *args) -> Node:
@@ -63,17 +67,43 @@ class ListContainer(Container):
             node.parent = self
             self.children.append(node)
 
+    def get_child_posn(self, child: Node):
+        """
+        Gets the position of the child in the container, raising an :exc:`NotAChildOfError` if the child is not found in the container.
+        """
+        success = False
+        for k, node in enumerate(self.children):
+            if node is child:
+                success = True
+        if not success:
+            raise NotAChildOfError(child, self)
+        return k
+
     def remove(self, index: Union[int, Node]):
         """
         Removes the node (if index is a Node) or the node at the specified position (if index is an int).
         """
         with self.lock:
             if isinstance(index, int):
-                self.children.pop(index)
+                node = self.children.pop(index)
+                node.parent = None
             elif isinstance(index, Node):
-                self.children.remove(index)
+                with index.lock:
+                    self.remove(self.get_child_posn(index))
             else:
                 raise TypeError(f'Invalid type {type(index)} for arg `index`.')
+
+    def replace(self, old_node: Node, new_node: Node):
+        """
+        Replaces the specified node with a new node at the same position.
+        """
+        with self.lock, old_node.lock, new_node.lock:
+            posn = self.get_child_posn(old_node)
+            old_node.parent = None
+            if new_node.parent:
+                new_node.parent.remove(new_node)
+            new_node.parent = self
+            self.children[posn] = new_node
 
     def _unsafe_resolve(self):
         with self.lock:

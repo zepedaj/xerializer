@@ -1,5 +1,6 @@
 """
 """
+from threading import RLock
 from .exceptions import InvalidRefStr, InvalidRefStrComponent
 from dataclasses import dataclass, field
 import abc
@@ -9,9 +10,11 @@ from enum import Enum, auto
 from . import varnames
 import re
 from .resolving_node import ResolvingNode
-
+from pathlib import Path
 
 # TODO: Remove this
+
+
 def _kw_only():
     """
     Provides kw-only functionality for versions ``dataclasses.field`` that do not support it.
@@ -29,22 +32,53 @@ class FLAGS(Enum):
 __doc__ += f"\n{varnames.SPHINX_DEFS}"
 
 
+def _propagate(node, prop_name, hidden_prop_name=None, default=None):
+    """
+    Returns the value of the hidden property, if it is not None, or the parent's property, if available, else the default value.
+
+    If used as a property getter in a class, accessing the parent's property will access, recursively, the property of all 
+    ancestors until one is foudn with a non-``None`` hidden property value.
+
+    :param node: The starting node.
+    :param prop_name: The name of the property.
+    :param hidden_prop_name: The name of the hidden property. Defaults to the property name prefixed with a ``'_'``.
+    """
+    return (
+        my_val if (my_val := getattr(node, hidden_prop_name or f'_{prop_name}')) is not None else
+        (getattr(node.parent, prop_name) if node.parent else default))
+
+
 @dataclass
 class Node(abc.ABC):
     """
     Base node used to represent contants, containers, keys and values. All nodes need to either be the root node or part of a :class:`Container`.
     """
     flags: Set[FLAGS] = field(default_factory=set)
+
     parent: Optional['Node'] = field(default=None, init=False)
     """
-    The parent node. This field is handled by container nodes and should not be set explicitly.
+    The parent :class:`Container` node. This field is handled by container nodes and should not be set explicitly.
     """
 
-    def __str__(self):
-        return f"{type(self).__name__}@'{self.qual_name}'"
+    lock: RLock = field(default_factory=RLock)
+    """
+    Locks the node, preventing modifications.
 
-    def __repr__(self):
-        return str(self)
+    .. todo:: Currently only used by containers. Thread-safety needs a review / testing.
+
+    """
+
+    _source_file: Optional[Path] = None  # Set by :func:`load`
+    source_file = property(lambda self: _propagate(self, 'source_file'))
+    """
+    Returns the source file of the nearest ancestor (including ``self``), or ``None`` if no ancestor was loaded from a file.
+    """
+
+    _alpha_conf_obj: Optional = None  # Set by AlphaConf initializer.
+    alpha_conf_obj = property(lambda self: _propagate(self, 'alpha_conf_obj'))
+    """
+    If the node is part of a tree in an :class:`AlphaConf` object, returns that object.
+    """
 
     @property
     def hidden(self):
@@ -53,6 +87,12 @@ class Node(abc.ABC):
         """
         return (FLAGS.HIDDEN in self.flags) or (
             False if not self.parent else self.parent.hidden)
+
+    def __str__(self):
+        return f"{type(self).__name__}@'{self.qual_name}'"
+
+    def __repr__(self):
+        return str(self)
 
     def resolve(self):
         """
@@ -73,7 +113,7 @@ class Node(abc.ABC):
         """
 
     # Regular expressions for ref strings.
-    #_REF_STR_COMPONENT_PATTERN = r'((?P<parents>\.+)|(?P<index>(0|[1-9]\d*))|(?P<key>\*?[a-zA-Z+]\w*))'
+    # _REF_STR_COMPONENT_PATTERN = r'((?P<parents>\.+)|(?P<index>(0|[1-9]\d*))|(?P<key>\*?[a-zA-Z+]\w*))'
     _REF_STR_COMPONENT_PATTERN = r'(?P<component>(\.+|[^\.]+))'
     _FULL_REF_STR_PATTERN = _REF_STR_COMPONENT_PATTERN + '*'
     # Compile the patterns.
@@ -136,7 +176,7 @@ class Node(abc.ABC):
         Each node type should know how to handle specific string ref component patterns.
         If the ref component is not recognied by the type, it should punt handling to the parent
         type. The implementation in :meth:`Node._node_from_ref_component` is the last resort, and it can only handle
-        dot-references to parents (e.g., "....") or self (e.g., "."). 
+        dot-references to parents (e.g., "....") or self (e.g., ".").
 
         This method also provides a hacky way for ref strings to skip :class:`KeyNode`s when these are parents in ref strings.
         """

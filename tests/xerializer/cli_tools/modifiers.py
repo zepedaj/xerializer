@@ -1,10 +1,40 @@
-from xerializer.cli_tools import modifiers as mdl
-from xerializer.cli_tools.tree_builder import AlphaConf
-
-from xerializer.cli_tools.dict_container import KeyNode
-from xerializer.cli_tools.nodes import ParsedNode
-from xerializer.cli_tools.ast_parser import Parser
 from unittest import TestCase
+from xerializer.cli_tools.ast_parser import Parser
+from xerializer.cli_tools.nodes import ParsedNode
+from xerializer.cli_tools.dict_container import KeyNode
+from xerializer.cli_tools.tree_builder import AlphaConf
+from xerializer.cli_tools import modifiers as mdl
+from tempfile import TemporaryDirectory
+from pathlib import Path
+import yaml
+import contextlib
+
+
+@contextlib.contextmanager
+def build_config_files():
+    # ./root.yaml
+    root_dat = dict((f'root_{k}', k) for k in range(5))
+    root_dat['root_5::load'] = 'subdir1/file1'
+
+    # ./subdir1/file1.yaml
+    file1_dat = dict((f'file1_{k}', k) for k in range(5))
+    file1_dat['file1_5::load'] = 'file2'
+
+    # ./subdir1/file2.yaml
+    file2_dat = dict((f'file2_{k}', k) for k in range(5))
+
+    # Build file structure
+    with TemporaryDirectory() as temp_dir:
+        temp_dir = Path(temp_dir)
+        (temp_dir / 'subdir1').mkdir()
+        for sub_path, dat in [
+                ('root.yaml', root_dat),
+                ('subdir1/file1.yaml', file1_dat),
+                ('subdir1/file2.yaml', file2_dat)
+        ]:
+            with open(temp_dir / sub_path, 'wt') as fo:
+                yaml.dump(dat, fo)
+        yield temp_dir/'root.yaml', (root_dat, file1_dat, file2_dat)
 
 
 class TestModifiers(TestCase):
@@ -39,3 +69,23 @@ class TestModifiers(TestCase):
 
             resolved_value = node.resolve()
             self.assertEqual(resolved_value, expected_resolved_value)
+
+    def test_load(self):
+        with build_config_files() as (config_file, (root_dat, file1_dat, file2_dat)):
+            super_root = {'super_root::load': str(config_file.absolute())}
+            ac = AlphaConf(super_root)
+            resolved = ac.resolve()['super_root']
+
+            for expected_dat, actual_dat in [
+                    (root_dat, resolved),
+                    (file1_dat, resolved['root_5']),
+                    (file2_dat, resolved['root_5']['file1_5'])
+            ]:
+                #
+                actual_dat = dict(actual_dat)
+                [actual_dat.pop(key) for key in list(actual_dat.keys()) if key[-1:] == '5']
+                #
+                expected_dat = dict(expected_dat)
+                [expected_dat.pop(key) for key in list(expected_dat.keys()) if key[-4:] == 'load']
+
+                self.assertEqual(actual_dat, expected_dat)
