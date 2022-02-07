@@ -58,7 +58,7 @@ class _RawKeyPatterns:
 
 class KeyNode(ParsedNode):
     """
-    Key nodes represent a Python dictionary entry and as such, they must always be used as :class:`DictContainer` children. Key nodes have
+    Key nodes represent a Python dictionary entry and as such, they must always be used as :class:`DictContainer` children. They implement part of the :class:`Container` interface. Key nodes have
 
     1. a :attr:`key` attribute of type ``str`` containing a valid Python variable name and
     2. a :attr:`value` attribute of type :class:`ValueNode`, :class:`DictNode` or :class:`ListNode`.

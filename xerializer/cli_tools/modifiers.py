@@ -32,6 +32,9 @@ def parent(_node: Node = _Unassigned, levels=1):
 
 @register('hidden')
 def hidden(node):
+    """
+    Marks the node as a hidden node that will not be included in resolved content.
+    """
     node.flags.add(FLAGS.HIDDEN)
 
 
@@ -49,12 +52,13 @@ def load(_node: KeyNode = _Unassigned, ext=DEFAULT_EXTENSION):
 
     The normal ``load`` workflow is as follows:
 
-    1. Modification of a ``load``-modified key node begins as part of a call to :meth:`AlphaConf.modify` during :class:`AlphaConf` initialization.
+    1. A key node's ``load`` modifier is applied as part of a call to :meth:`AlphaConf.modify` during :class:`AlphaConf` initialization.
     2. The target file path is obtained by resolving the key node's value attribute using ``node.value()``.
-    3. The data in the target file path is loaded and used to built a sub-tree.
+    3. The data in the target file is loaded and used to built a sub-tree.
     4. The sub-tree is used to replace the original :attr:`node.value` node in the original `AlphaConf` node tree.
-    5. All modifiers all applied to all nodes of the newly inserted sub-tree.
-    6. Modification of the original sub-tree as part of the :meth:`AlphaConf.modify` call continues with the remaining nodes.
+    5. All modifiers are applied to all nodes of the newly inserted sub-tree.
+    6. All remaining ``node`` modifiers after ``load`` are applied to the original key node (with the newly substituted value node).
+    7. Modification of the original sub-tree as part of the :meth:`AlphaConf.modify` call continues with the remaining nodes.
 
     .. rubric:: Syntax
 
@@ -99,5 +103,5 @@ def load(_node: KeyNode = _Unassigned, ext=DEFAULT_EXTENSION):
     # Modify the new node sub-tree
     ac.modify(new_node)
 
-    # Return the new node so that all subsequent modifications are relative to this new node
-    return new_node
+    # Since the modifier is applied to the KeyNode, and the KeyNode has not changed, return that node and not new_node.
+    return node
