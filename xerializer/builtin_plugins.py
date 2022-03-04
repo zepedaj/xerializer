@@ -70,6 +70,8 @@ class DictSerializer(_BuiltinTypeSerializer):
     """
     Implicit and explicit dictionary serialization.
 
+    .. todo:: :meth:`from_serializable` supports hashable objects as keys, but not :meth:`as_serializable`.
+
     @doctest
     .. ipython::
 
@@ -105,15 +107,13 @@ class DictSerializer(_BuiltinTypeSerializer):
             if not set(obj.keys()).issubset(valid_keys := {'__type__', 'value'}):
                 raise ValueError(
                     f'Invalid keys `{list(obj.keys())}` for dictionary in serializable form. Valid keys are `{list(valid_keys)}`.')
-            out = obj.get('value', {})
+            value = from_serializable(obj.get('value', {}))
         else:
-            out = obj
-        # Calling dict() makes it possible to take e.g., lists.
-        # Calling it after self.from_serializable makes it possible
-        # to process any 'value' that dict() would take (e.g., generators)
-        # and not just lists.
-        out = dict(self.from_serializable(out))
-        return {_key: from_serializable(_val) for _key, _val in out.items()}
+            value = obj
+        if isinstance(value, dict):
+            return {_key: from_serializable(_val) for _key, _val in value.items()}
+        else:
+            return dict(value)
 
     def as_serializable(cls, obj):
         return obj

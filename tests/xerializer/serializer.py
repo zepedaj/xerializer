@@ -68,7 +68,6 @@ class TestSerializer(TestCase):
                 1,
                 [0, 1, 2],
                 {'a': 0, 'b': 1, 'c': 2},
-                {'__type__': 0, 'b': 1, 'c': 2},
                 {1, 2, 3, 4},
                 (1, 2, 3, 4),
                 compound_obj_1]:

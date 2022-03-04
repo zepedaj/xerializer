@@ -1,4 +1,5 @@
 from .base import DtypeSerializer
+import re
 from xerializer.builtin_plugins import _BuiltinTypeSerializer
 from pglib.py import strict_zip
 from datetime import date, datetime
@@ -126,6 +127,20 @@ class NDArraySerializer(_BuiltinTypeSerializer):
         return out
 
 
-class Datetime64Serializer(NDArraySerializer):
+class Datetime64Serializer(_BuiltinTypeSerializer):
     signature = 'np.datetime64'
     handled_type = np.datetime64
+    _dtype_serializer = DtypeSerializer()
+
+    def _get_specifier(self, dtype):
+        return re.fullmatch(r'datetime64\[(?P<spec>.*)\]', str(dtype))['spec']
+
+    def as_serializable(self, val):
+        return {
+            'args': [
+                str(val),
+                self._get_specifier(val.dtype)]
+        }
+
+    def from_serializable(self, args):
+        return np.datetime64(*args)
