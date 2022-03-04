@@ -52,7 +52,7 @@ class TestBuiltinPlugins(TestCase):
             {1: 2})
 
         self.assertEqual(
-            serializer.from_serializable({'__type__': 'dict', 'value': [(1, 2)]}),
+            serializer.from_serializable({'__type__': 'dict', 'value': [[1, 2]]}),
             {1: 2})
 
         self.assertEqual(

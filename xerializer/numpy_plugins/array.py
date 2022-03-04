@@ -127,6 +127,10 @@ class NDArraySerializer(_BuiltinTypeSerializer):
         return out
 
 
+class _NoArg:
+    pass
+
+
 class Datetime64Serializer(_BuiltinTypeSerializer):
     signature = 'np.datetime64'
     handled_type = np.datetime64
@@ -142,5 +146,22 @@ class Datetime64Serializer(_BuiltinTypeSerializer):
                 self._get_specifier(val.dtype)]
         }
 
-    def from_serializable(self, args):
-        return np.datetime64(*args)
+    def from_serializable(self, value=_NoArg, args=_NoArg):
+        """
+        Can read both to types of representations:
+
+        .. doctest::
+
+          >>> from xerializer import Serializer
+          >>> srlzr = Serializer()
+          >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10'})
+          >>> srlzr.from_serializable({'__type__':'np.datetime64', 'args':['2002-10-10', 'h']})
+
+        """
+        if (_n := sum([value is _NoArg, args is _NoArg])) != 1:
+            raise ValueError(
+                f'Need to specify exactly one of `value` or `args`, but specified `{_n}`.')
+        if value is not _NoArg:
+            return np.datetime64(value)
+        else:
+            return np.datetime64(*args)
