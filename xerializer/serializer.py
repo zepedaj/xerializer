@@ -4,6 +4,7 @@
 
 from inspect import isabstract
 from itertools import chain
+from functools import partial
 from numbers import Number
 from . import builtin_plugins
 from .numpy_plugins import numpy_serializers, numpy_as_bytes_serializers  # noqa
@@ -92,6 +93,9 @@ class Serializer:
             for _x in plugins))) if plugins else []
 
     def as_serializable(self, obj):
+        """
+        Takes an object and converts it to its serializable representation.
+        """
 
         if isinstance(obj, (Number, str, type(None))):
             # Simple types
@@ -112,7 +116,15 @@ class Serializer:
     def is_serializable(self, obj):
         return type(obj) in self.as_serializable_plugins
 
-    def from_serializable(self, obj):
+    def from_serializable(self, obj, permissive=False):
+        """
+        Takes an serializable representation of an object and converts it to its object form.
+
+        :param obj: An object in serializable form that will be deserialized.
+        :param permissive: If ``False``, the default, encountering an object or nested object that is not in serializable form will result in an error. If ``True``, the (nested) object will be returned as is.
+        """
+
+        from_serializable_ = partial(self.from_serializable, permissive=permissive)
 
         if isinstance(obj, (Number, str, type(None))):
             # Simple types
@@ -120,7 +132,7 @@ class Serializer:
 
         elif isinstance(obj, list):
             # Lists
-            return [self.from_serializable(_val) for _val in obj]
+            return [from_serializable_(_val) for _val in obj]
 
         elif isinstance(obj, dict):
             # Dictionaries and plugins
@@ -130,14 +142,16 @@ class Serializer:
                 except KeyError:
                     raise ExtensionMissing(signature)
                 else:
-                    return type_deserializer._build_obj(obj, self.from_serializable)
+                    return type_deserializer._build_obj(obj, from_serializable_)
 
             else:
                 # Dictionaries without a '__type__' field - special case to reduce verbosity in
                 # the most common dictionary cases.
                 return self.from_serializable_plugins['dict']._build_obj(
-                    obj, self.from_serializable)
+                    obj, from_serializable_)
         else:
+            if permissive:
+                return obj
             raise TypeError(f'Invalid input of type {type(obj)}.')
 
     def get_signature(self, entity):
