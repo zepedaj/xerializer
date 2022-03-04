@@ -102,10 +102,17 @@ class DictSerializer(_BuiltinTypeSerializer):
 
     def _build_obj(self, obj, from_serializable):
         if '__type__' in obj:
-            out = obj['value']
+            if not set(obj.keys()).issubset(valid_keys := {'__type__', 'value'}):
+                raise ValueError(
+                    f'Invalid keys `{list(obj.keys())}` for dictionary in serializable form. Valid keys are `{list(valid_keys)}`.')
+            out = obj.get('value', {})
         else:
             out = obj
-        out = self.from_serializable(out)
+        # Calling dict() makes it possible to take e.g., lists.
+        # Calling it after self.from_serializable makes it possible
+        # to process any 'value' that dict() would take (e.g., generators)
+        # and not just lists.
+        out = dict(self.from_serializable(out))
         return {_key: from_serializable(_val) for _key, _val in out.items()}
 
     def as_serializable(cls, obj):

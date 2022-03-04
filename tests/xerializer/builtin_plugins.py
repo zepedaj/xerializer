@@ -40,3 +40,21 @@ class TestBuiltinPlugins(TestCase):
             srlzd_obj = serializer.serialize(_obj)
             self.assertIsInstance(srlzd_obj, str)
             self.assertEqual(_obj, serializer.deserialize(srlzd_obj))
+
+    def test_dict_serialization(self):
+        serializer = Serializer()
+
+        with self.assertRaisesRegex(ValueError, 'Invalid keys .*garbage.*'):
+            serializer.from_serializable({'__type__': 'dict', 'value': {1: 2}, 'garbage': 1})
+
+        self.assertEqual(
+            serializer.from_serializable({'__type__': 'dict', 'value': {1: 2}}),
+            {1: 2})
+
+        self.assertEqual(
+            serializer.from_serializable({'__type__': 'dict', 'value': [(1, 2)]}),
+            {1: 2})
+
+        self.assertEqual(
+            serializer.from_serializable({'__type__': 'dict'}),
+            {})
