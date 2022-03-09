@@ -114,7 +114,8 @@ class _DecoratedTypeSerializer(_TypeSerializer):
             })
 
 
-def serializable(explicit_defaults: bool = True, signature=None, kwargs_level='auto'):
+def serializable(_wrapped=None, *, explicit_defaults: bool = True, signature=None,
+                 kwargs_level='auto'):
     """
 
     Decorator that makes a class serializable, or a callable (include class methods) de-serializable.
@@ -156,7 +157,10 @@ def serializable(explicit_defaults: bool = True, signature=None, kwargs_level='a
         else:
             raise Exception(f'Type {type(obj)} not currently supported by @serializable decorator.')
 
-    return fxn
+    if _wrapped is not None:
+        return fxn(_wrapped)
+    else:
+        return fxn
 
 
 class _DecoratedCallableDeserializer(_DecoratedTypeSerializer):
