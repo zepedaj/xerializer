@@ -29,6 +29,12 @@ class UnserializableType(TypeError):
             f"Object {in_obj} of type {type(in_obj)} cannot be serialized by the installed extensions.")
 
 
+class DeserializationError(Exception):
+    def __init__(self, signature):
+        super().__init__(
+            f"Error while deserializing object with signature `{signature}`.")
+
+
 PluginsType = TypeVar(Optional[List[Union[TypeSerializer, ModuleType]]])
 """
 Can be a ``None`` or a list containing :class:`TypeSerializer` class definitions or their modules.
@@ -142,7 +148,10 @@ class Serializer:
                 except KeyError:
                     raise ExtensionMissing(signature)
                 else:
-                    return type_deserializer._build_obj(obj, from_serializable_)
+                    try:
+                        return type_deserializer._build_obj(obj, from_serializable_)
+                    except Exception:
+                        raise DeserializationError(signature)
 
             else:
                 # Dictionaries without a '__type__' field - special case to reduce verbosity in

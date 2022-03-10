@@ -148,7 +148,7 @@ class Datetime64Serializer(_BuiltinTypeSerializer):
 
     def from_serializable(self, value=_NoArg, args=_NoArg):
         """
-        Can read both to types of representations:
+        Can read both types of representations:
 
         .. doctest::
 
