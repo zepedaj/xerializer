@@ -118,9 +118,9 @@ def serializable(_wrapped=None, *, explicit_defaults: bool = True, signature=Non
                  kwargs_level='auto'):
     """
 
-    Decorator that makes a class serializable, or a callable (include class methods) de-serializable.
+    Decorator that makes a class serializable, or a callable (includes class methods) de-serializable.
 
-    .. note:: Class methods need to have the ``@serializable`` decorator outside the ``@classmethod`` decorator to avoid a ``TypeError: [classmethod name] missing 1 required position argument: '[class argument name]'`` error. The same restriction does not apply to ``@staticmethod``-decorated methods.
+    .. note:: Class methods need to have the ``@serializable`` decorator outside the ``@classmethod`` decorator to avoid a ``TypeError: [classmethod name] missing 1 required position argument: '[class argument name]'`` error. The restriction does not apply to ``@staticmethod``-decorated methods.
 
     .. todo:: Add examples for callables in intro, including functions, bound classmethods and instance methods.
 
