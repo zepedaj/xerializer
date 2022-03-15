@@ -1,4 +1,5 @@
 from xerializer import builtin_plugins as mdl, Serializer
+import re
 from unittest import TestCase
 from abc import ABC, ABCMeta
 
@@ -44,8 +45,13 @@ class TestBuiltinPlugins(TestCase):
     def test_dict_serialization(self):
         serializer = Serializer()
 
-        with self.assertRaisesRegex(ValueError, 'Invalid keys .*garbage.*'):
+        try:
             serializer.from_serializable({'__type__': 'dict', 'value': {1: 2}, 'garbage': 1})
+        except Exception as err:
+            if not re.match('.*Invalid keys .*garbage.*', str(err.__cause__)):
+                raise err
+        else:
+            raise Exception('Expected exception did not happen.')
 
         self.assertEqual(
             serializer.from_serializable({'__type__': 'dict', 'value': {1: 2}}),

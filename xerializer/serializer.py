@@ -150,8 +150,8 @@ class Serializer:
                 else:
                     try:
                         return type_deserializer._build_obj(obj, from_serializable_)
-                    except Exception:
-                        raise DeserializationError(signature)
+                    except Exception as err:
+                        raise DeserializationError(signature) from err
 
             else:
                 # Dictionaries without a '__type__' field - special case to reduce verbosity in
