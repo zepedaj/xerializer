@@ -64,3 +64,15 @@ class TestBuiltinPlugins(TestCase):
         self.assertEqual(
             serializer.from_serializable({'__type__': 'dict'}),
             {})
+
+    def test_dict__nested(self):
+        serializer = Serializer()
+
+        for orig in [
+                {'__type__': 'abc:x'},
+                {'__type__': 'abc:x',
+                 'value': {'__type__': 'abc:y', 'value': {'__type__': 'abc:z'}}}]:
+            srlzd_orig = serializer.serialize(orig)
+            self.assertEqual(
+                serializer.deserialize(srlzd_orig),
+                orig)

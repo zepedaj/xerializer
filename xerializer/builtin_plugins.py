@@ -107,13 +107,18 @@ class DictSerializer(_BuiltinTypeSerializer):
             if not set(obj.keys()).issubset(valid_keys := {'__type__', 'value'}):
                 raise ValueError(
                     f'Invalid keys `{list(obj.keys())}` for dictionary in serializable form. Valid keys are `{list(valid_keys)}`.')
-            value = from_serializable(obj.get('value', {}))
+            if isinstance(value := obj.get('value', {}), dict):
+                # obj['value'] = {<key including '__type__'> :<value to deserialize>, ...}
+                value = {_key: from_serializable(_val) for _key, _val in value.items()}
+            else:
+                # obj['value'] = [[<key to deserialize>, <value to deserialize>], ... ]
+                #                (or any other dict()-compatible arg).
+                value = dict(from_serializable(value))
         else:
-            value = obj
-        if isinstance(value, dict):
-            return {_key: from_serializable(_val) for _key, _val in value.items()}
-        else:
-            return dict(value)
+            # obj = {<key not including '__type__'> :<value to deserialize>, ...}
+            value = {_key: from_serializable(_val) for _key, _val in obj.items()}
+
+        return value
 
     def as_serializable(cls, obj):
         return obj
