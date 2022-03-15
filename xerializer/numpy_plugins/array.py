@@ -1,4 +1,5 @@
 from .base import DtypeSerializer
+import warnings
 import re
 from xerializer.builtin_plugins import _BuiltinTypeSerializer
 from pglib.py import strict_zip
@@ -146,7 +147,7 @@ class Datetime64Serializer(_BuiltinTypeSerializer):
                 self._get_specifier(val.dtype)]
         }
 
-    def from_serializable(self, value=_NoArg, args=_NoArg):
+    def from_serializable(self, value=_NoArg, args=_NoArg, dtype=_NoArg):
         """
         Can read both types of representations:
 
@@ -154,14 +155,17 @@ class Datetime64Serializer(_BuiltinTypeSerializer):
 
           >>> from xerializer import Serializer
           >>> srlzr = Serializer()
-          >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10'})
+          >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10'})        
           >>> srlzr.from_serializable({'__type__':'np.datetime64', 'args':['2002-10-10', 'h']})
+          >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10', 'dtype':<np.dtype>})
 
         """
-        if (_n := sum([value is _NoArg, args is _NoArg])) != 1:
-            raise ValueError(
-                f'Need to specify exactly one of `value` or `args`, but specified `{_n}`.')
+        if (_n := sum([value is _NoArg, args is _NoArg])) != 1 or (dtype is not _NoArg and args is not _NoArg):
+            raise ValueError(f'Invalid arguments.')
         if value is not _NoArg:
-            return np.datetime64(value)
+            out = np.datetime64(value)
+            if dtype is not _NoArg:
+                out = out.astype(dtype)
+                warnings.warn("Argument `dtype` is deprecated.", DeprecationWarning)
         else:
             return np.datetime64(*args)
