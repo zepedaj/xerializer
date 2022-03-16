@@ -160,12 +160,13 @@ class Datetime64Serializer(_BuiltinTypeSerializer):
           >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10', 'dtype':<np.dtype>})
 
         """
-        if (_n := sum([value is _NoArg, args is _NoArg])) != 1 or (dtype is not _NoArg and args is not _NoArg):
+        if (sum([value is _NoArg, args is _NoArg])) != 1 or (dtype is not _NoArg and args is not _NoArg):
             raise ValueError(f'Invalid arguments.')
         if value is not _NoArg:
             out = np.datetime64(value)
             if dtype is not _NoArg:
                 out = out.astype(dtype)
                 warnings.warn("Argument `dtype` is deprecated.", DeprecationWarning)
+            return out
         else:
             return np.datetime64(*args)

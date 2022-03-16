@@ -1,4 +1,5 @@
 from xerializer import builtin_plugins as mdl, Serializer
+import numpy as np
 import re
 from unittest import TestCase
 from abc import ABC, ABCMeta
@@ -76,3 +77,16 @@ class TestBuiltinPlugins(TestCase):
             self.assertEqual(
                 serializer.deserialize(srlzd_orig),
                 orig)
+
+    def test_dict__from_serializable__lists(self):
+        serializer = Serializer()
+        for source, expected in [
+                ({
+                    '__type__': 'dict',
+                    'value': [
+                        [{'__type__': 'tuple', 'value': [0, 1]}, 0],
+                        [{'__type__': 'np.datetime64', 'value': '2020-10-10'}, 1]
+                    ]},
+                 {(0, 1): 0, np.datetime64('2020-10-10'): 1})
+        ]:
+            self.assertEqual(serializer.from_serializable(source), expected)

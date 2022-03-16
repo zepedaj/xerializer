@@ -155,3 +155,26 @@ class TestDatetime64(TestCase):
                 np.datetime64('2020-10-10'),
                 np.datetime64('2020-10-10T10:00:00.123')]:
             self.assertEqual(_obj, serializer.deserialize(serializer.serialize(_obj)))
+
+    def test_from_serializable(self):
+
+        # >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10'})
+        # >>> srlzr.from_serializable({'__type__':'np.datetime64', 'args':['2002-10-10', 'h']})
+        # >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10', 'dtype':<np.dtype>})
+
+        serializer = Serializer()
+        for source, expected in [
+            ({'__type__': 'np.datetime64', 'value': '2020-10-10'},
+             np.datetime64('2020-10-10')),
+            ({'__type__': 'np.datetime64', 'args': ['2020-10-10', 'h']},
+             np.datetime64('2020-10-10', 'h'))]:
+            self.assertEqual(actual := serializer.from_serializable(source), expected)
+            self.assertEqual(actual.dtype, expected.dtype)
+
+        with self.assertWarns(DeprecationWarning):
+            for source, expected in [
+                ({'__type__': 'np.datetime64', 'value': '2020-10-10',
+                  'dtype': {'__type__': 'dtype', 'value': 'datetime64[m]'}},
+                 np.datetime64('2020-10-10', 'm'))]:
+                self.assertEqual(actual := serializer.from_serializable(source), expected)
+                self.assertEqual(actual.dtype, expected.dtype)
