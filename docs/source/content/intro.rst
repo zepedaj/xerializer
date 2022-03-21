@@ -90,7 +90,10 @@ A custom type can be made serializable by inheriting from :class:`xerializer.Ser
 
     # CREATING A SERIALIZABLE CLASS 
 
-    # Contents of 'my_serializable_module.py'
+    #############################################################
+    # An new class that derives `Serializable` 
+    #############################################################
+
     from xerializer import Serializable
     
     class MySerializable(Serializable):
@@ -98,20 +101,30 @@ A custom type can be made serializable by inheriting from :class:`xerializer.Ser
             self.arg1 = arg1
             self.arg2 = arg2
 
+	############################
         # Required
+	############################
+
         def as_serializable(self):
             return {'arg1': self.arg1, 'arg2': self.arg2}
 
+	############################
         # Optional (defaults shown)
-        # (Serializer.from_serializable is a **class** method)
+	############################
+
         @classmethod
         def from_serializable(cls, **kwargs):
             return cls(**kwargs)
-        signature = 'my_serializable_module.MySerializable'
+
+        signature = '<module name>:MySerializable'
+
         register = True
 
-    # To serialize a type, the Serializable needs to be declared before 
-    # Serializer is instantiated.
+    ###################################################
+    # To serialize a type,  `MySerializable` needs to 
+    # be declared before `Serializer` is instantiated.
+    ###################################################
+    
     from xerializer import Serializer
     print(Serializer().serialize(MySerializable(1,2)))
 
@@ -119,6 +132,8 @@ A custom type can be made serializable by inheriting from :class:`xerializer.Ser
 
     {"__type__": "my_serializable_module.MySerializable", "arg1": 1, "arg2": 2}
 
+
+.. _stand-alone TypeSerializer:
 
 ... with a stand-alone :class:`~xerializer.TypeSerializer`
 =================================================================
@@ -129,14 +144,23 @@ For classes that already exist, one can instead create a standalone type seriali
 
     # CREATING A STANDALONE TYPE SERIALIZER FOR AN EXISTING CLASS
 
-    # An existing class in module 'my_non_serializable_module.py'
+    #############################################################
+    # An existing class that cannot be modified 
+    # in module `my_package.my_non_serializable_module`
+    #############################################################
+
     class MyNonSerializable:
         def __init__(self, arg1, arg2):
             self.arg1 = arg1
             self.arg2 = arg2
 
 
-    # A type serializer that handles MyNonSerializable
+    ####################################################
+    # A type serializer to handle `MyNonSerializable`
+    # in module `_my_xerializer`
+    ####################################################
+
+    # from my_package.my_non_serializable_module import MyNonSerializable
     from xerializer import TypeSerializer
     
     class MyClassSerializer(TypeSerializer):
@@ -150,11 +174,19 @@ For classes that already exist, one can instead create a standalone type seriali
         # (TypeSerializer.from_serializable is a regular **instance** method)
         def from_serializable(cls, **kwargs):
             return cls(**kwargs)
-        signature = 'my_non_serializable_module.MyNonSerializable'
+        signature = 'my_non_serializable_module:MyNonSerializable'
         register = True
 
-    # To serialize a type, the custom TypeSerializer needs to be declared
-    # before the Serializer is instantiated.
+	
+    ####################################
+    # Serializing the custom type    
+    ####################################
+
+    # To serialize a type, the custom module containing MyClassSerializer needs to be imported
+    # before the Serializer is instantiated. Importing the module declares the class,
+    # which automatically registers it
+
+    # import _my_xerializer
     from xerializer import Serializer
     print(Serializer().serialize(MyNonSerializable(1,2)))
 
@@ -177,51 +209,82 @@ Classes decorated with :meth:`@serializable() <xerializer.serializable>` will ha
 Unlike classes deriving from :class:`xerializer.Serializable`, classes derived from :meth:`@serializable() <xerializer.serializable>`-decorated classes do not inherit the serializable quality.
 
 
-.. rubric:: Examples
+.. rubric:: Example: Using ``serializable`` as a decorator
+
+:func:`serializable` can be used as a class, method or function decorator, automatically making instances of these objects serializable, and calls to these methods or functions de-serializable.
 
 .. testcode::
 
    from xerializer import Serializer, serializable
 
+   #####################################################
    # Using serializable as a decorator.
-   # 'signature' optional, defaults to fully qualified
+   # `signature` optional, defaults to fully qualified
    # class name.
+   #####################################################
    @serializable(signature='MyClass1') 
    class MyClass1:
      def __init__(self, a, b=2):
        self.a = a
        self.b = b
      def __eq__(self, x):
-       return self.a == x.a and self.b == x.b
+       return self.a == x.a and self.b == x.b      
 
+.. testcode::
 
-   # Using serializable as a function.
+   ###########################
+   # Serializing/deserializing
+   ###########################
+
+   # The `serializable`-decorated class declaration needs to happen before `Serializer` is instantiated.
+   >>> srlzr = Serializer()
+
+   >>> mc1 = MyClass1(1)
+   >>> mc1_srlzd = srlzr.serialize(mc1)
+   >>> assert mc1 == srlzr.deserialize(mc1_srlzd)   
+   >>> print(mc1_srlzd)
+   {"__type__": "MyClass1", "a": 1, "b": 2}
+
+.. rubric:: Example: Using ``serializable`` as a function
+
+Using ``serializable`` as a function makes it possible to register classes without modifying their source code, similarly to the approach that uses a :ref:`stand-alone type serializer <stand-alone TypeSerializer>`.
+
+.. testcode:: 
+
+   #########################################
+   # The target class to make serializable.
+   #########################################
+
    class MyClass2(MyClass1): 
      def __init__(self, a, *args, b=2, **kwargs):
        self.a = a
        self.b = b
+
+   #########################################
+   # Using `serializable` as a function
+   #########################################
+
    # Setting explicit_defaults=False means that defaults such as b=2 are
-   # not serialized. The default is explicit_defaults=True.
+   # not serialized. 
+   # The default is explicit_defaults=True.
+
    MyClass2 = serializable(explicit_defaults=False, signature='MyClass2')(MyClass2) 
 
-   # Verifying serialization
-   srlzr = Serializer()
+.. testcode::
 
-   mc1 = MyClass1(1)
-   mc1_srlzd = srlzr.serialize(mc1)
-   assert mc1 == srlzr.deserialize(mc1_srlzd)   
+   ###########################
+   # Serializing/deserializing
+   ###########################
 
-   mc2 = MyClass2(3)
-   mc2_srlzd = srlzr.serialize(mc2)
-   assert mc2 == srlzr.deserialize(mc2_srlzd)
-   
-   print(mc1_srlzd)
-   print(mc2_srlzd)
-
-.. testoutput::
-
-   {"__type__": "MyClass1", "a": 1, "b": 2}
+   # The `serializable` call needs to happen before `Serializer` is instantiated.
+   >>> srlzr = Serializer()
+   #
+   >>> mc2 = MyClass2(3)
+   >>> mc2_srlzd = srlzr.serialize(mc2)
+   >>> assert mc2 == srlzr.deserialize(mc2_srlzd)
+   >>> print(mc2_srlzd)
    {"__type__": "MyClass2", "a": 3}
+   
 
 .. _Decorator serialization syntax:
 

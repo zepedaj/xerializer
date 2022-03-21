@@ -44,17 +44,7 @@ var1:
 
 .. todo::
 
-   * AST Parser
-     * Extracting/replacing python interpolation from value strings.
-     * Node system - key / value nodes.
-     * Key string interpolation
-     * load, fromdir, other function implementations.
-
-   * Parser
-     * Documentation
-     * Support passing non-string argument value to parent call
-     * Support key strings with type and functions that automatically substitue in the node (or parent node) first argument.
-     * 
+   * Change ``explicit_defaults=False`` by default instead of ``explicit_defaults=True``.
    
    * Add a hydra-like or command-line argument processing extension.
      * Should support creation of meta variables that are not passed to the program: { @meta: {input_dimension: 100}}
