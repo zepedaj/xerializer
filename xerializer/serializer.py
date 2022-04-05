@@ -15,6 +15,7 @@ from typing import TypeVar, Optional, List, Union
 from types import ModuleType
 from . import datetime_plugins
 from .abstract_type_serializer import TypeSerializer
+from .decorator import serializable
 
 
 class ExtensionMissing(TypeError):
@@ -41,6 +42,7 @@ Can be a ``None`` or a list containing :class:`TypeSerializer` class definitions
 """
 
 
+@serializable
 class Serializer:
     """
     Extension of JSON serializer that also supports objects implementing or being supported by a :class:`~pglib2.abstract_type_serializer.TypeSerializer` interface as well as lists, tuples, sets and dictionaries (with string keys) of such objects. Note that, unlike the default json behavior, :class:`Serializer` preserves types such as tuple and list.
@@ -54,7 +56,7 @@ class Serializer:
                  third_party: bool = True,
                  numpy_as_bytes: bool = False):
         """
-        :param plugins: List of :class:`TypeSerializer` classes or modules containing such classes. Will overwrite any builting serializers managing the same handled type or signature.
+        :param plugins: List of :class:`TypeSerializer` classes or modules containing such classes. Will overwrite any builtin serializers managing the same handled type or signature.
         :param builtins: Whether to include the builtin plugins in the serializer.
         :param third_party: Whether to include all registered third-party serializers.
         :param numpy_as_bytes: When ``builtins=True``, setting this to ``True`` will serialize numpy arrays in a more compact byte representation that is not human readable/editable. The default uses a human-readable/editable string representation.
