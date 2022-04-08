@@ -10,7 +10,7 @@ Default name of source class key.
 
 class Generic:
     """
-    Classes serialized as generic using :meth:`register_generic` will have their objects serialized as objects of this class. The class offers no functionality and rather only mimicks the attribute interface of the handled object. The deserialized class will by default include an attribute (with default name :attrib:`DEFAULT_SOURCE_KEY`) pointing to the original class, unless this functionality is desable by specifying the attribute name as ``None``.
+    Classes serialized as generic using :meth:`register_generic` will have their objects serialized as objects of this class. The class offers no functionality and rather only mimicks the attribute interface of the handled object. The deserialized class will by default include an attribute (with default name :attr:`DEFAULT_SOURCE_KEY`) pointing to the original class, unless this functionality is desable by specifying the attribute name as ``None``.
     """
 
     def __init__(self, **kwargs):
@@ -67,7 +67,7 @@ def register_generic(cls, only=None, include=None, exclude=None,
     """
     Creates a concrete instance of :class:`GenericSerializer` associated to the specified input class
 
-    :param cls: Input class to make serializable as a :calss:`Generic` object.
+    :param cls: Input class to make serializable as a :class:`Generic` object.
     """
 
     globals()[cls.__qualname__] = type(
