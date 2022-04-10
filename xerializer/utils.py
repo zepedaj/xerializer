@@ -48,9 +48,11 @@ class AsProcessParam(AsPickleable):
 
     This wrapper abstracts away this behavior, relying on :class:`AsPickleable` when pickling is involved, and behaving as a no-op when it is not.
 
+    .. note:: Parameters are always pickled when using `ProcessPoolExecutor <https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.ProcessPoolExecutor>`_ instances -- you hence need to use class :class:`AsPickleable` instead of :class:`AsProcessParam` when using that process management method.
+
     .. warning:: Instantiating this class calls `multiprocessing.get_start_method() <https://docs.python.org/3/library/multiprocessing.html#multiprocessing.get_start_method>`_ with ``allow_none=False`` and hence implicitly fixes the process start method (if it has not been set before) to the platform-dependent default.
 
-    .. note:: Parameters are always pickled when using `ProcessPoolExecutor <https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.ProcessPoolExecutor>`_ instances -- use class :class:`AsPickleable` instead of :class:`AsProcessParam` when using that process management method.
+    .. warning:: The returned object will be stateless when :class:`AsPickleable` is used under the hood -- the unpickled object will be a newly-instantiated instance. When it is not (e.g., when forking), the state of the object will be preserved, as an exact copy of the process is created by the forking operation.
 
     """
 
