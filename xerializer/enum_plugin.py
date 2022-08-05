@@ -10,7 +10,7 @@ class EnumSerializer(TypeSerializer):
     """
 
     def as_serializable(self, obj):
-        return {'name': obj.name}
+        return {"name": obj.name}
 
     def from_serializable(self, name):
         return getattr(self.handled_type, name)
@@ -24,10 +24,7 @@ def register_enum(base_enum):
     """
 
     globals()[base_enum.__qualname__] = type(
-        base_enum.__name__ + '_' + uuid.uuid4().hex[:20],
+        base_enum.__name__ + "_" + uuid.uuid4().hex[:20],
         (EnumSerializer,),
-        {
-            '__module__': __name__,
-            'handled_type': base_enum
-        }
+        {"__module__": __name__, "handled_type": base_enum},
     )

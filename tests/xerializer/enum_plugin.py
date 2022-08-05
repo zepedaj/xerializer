@@ -13,5 +13,4 @@ class TestEnumSerializer(TestCase):
 
         mdl.register_enum(MyEnum)
         srlzr = Serializer()
-        self.assertIs(
-            MyEnum.a, srlzr.deserialize(srlzr.serialize(MyEnum.a)))
+        self.assertIs(MyEnum.a, srlzr.deserialize(srlzr.serialize(MyEnum.a)))

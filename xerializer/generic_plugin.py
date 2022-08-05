@@ -2,7 +2,7 @@ from xerializer import TypeSerializer
 import abc
 import uuid
 
-DEFAULT_SOURCE_CLASS_KEY = 'source_class'
+DEFAULT_SOURCE_CLASS_KEY = "source_class"
 """
 Default name of source class key.
 """
@@ -31,7 +31,7 @@ class GenericSerializer(TypeSerializer):
         Name for attribute used to store the source class. Skipped if set to None.
         """
 
-    signature = 'generic'
+    signature = "generic"
     excluded_attribs = None
     """
     Exclude these attributes.
@@ -49,9 +49,9 @@ class GenericSerializer(TypeSerializer):
         if self.only_attribs:
             attribs = self.only_attribs
         else:
-            attribs = (
-                set(list(obj.__dict__) + (self.included_attribs or [])) -
-                set(self.excluded_attribs or []))
+            attribs = set(list(obj.__dict__) + (self.included_attribs or [])) - set(
+                self.excluded_attribs or []
+            )
         out = {}
         if self.source_class_key is not None:
             out = {self.source_class_key: type(obj)}
@@ -62,8 +62,13 @@ class GenericSerializer(TypeSerializer):
         return Generic(**kwargs)
 
 
-def register_generic(cls, only=None, include=None, exclude=None,
-                     source_class_key=DEFAULT_SOURCE_CLASS_KEY):
+def register_generic(
+    cls,
+    only=None,
+    include=None,
+    exclude=None,
+    source_class_key=DEFAULT_SOURCE_CLASS_KEY,
+):
     """
     Creates a concrete instance of :class:`GenericSerializer` associated to the specified input class
 
@@ -71,14 +76,14 @@ def register_generic(cls, only=None, include=None, exclude=None,
     """
 
     globals()[cls.__qualname__] = type(
-        cls.__name__ + '_' + uuid.uuid4().hex[:20],
+        cls.__name__ + "_" + uuid.uuid4().hex[:20],
         (GenericSerializer,),
         {
-            '__module__': __name__,
-            'handled_type': cls,
-            'only_attribs': only,
-            'included_attribs': include,
-            'excluded_attribs': exclude,
-            'source_class_key': source_class_key
-        }
+            "__module__": __name__,
+            "handled_type": cls,
+            "only_attribs": only,
+            "included_attribs": include,
+            "excluded_attribs": exclude,
+            "source_class_key": source_class_key,
+        },
     )

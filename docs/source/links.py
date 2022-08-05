@@ -1,8 +1,11 @@
 extlinks = {
     # Can be used as :issue:`123`
-    'issue': ('https://github.com/sphinx-doc/sphinx/issues/%s', 'issue '),
+    "issue": ("https://github.com/sphinx-doc/sphinx/issues/%s", "issue "),
     # Use as :client:`EClient.reqIds <aecea365530f40e7b56529238c9dd2f4a>`
-    'client': ('https://interactivebrokers.github.io/tws-api/classIBApi_1_1EClient.html#%s', None),
+    "client": (
+        "https://interactivebrokers.github.io/tws-api/classIBApi_1_1EClient.html#%s",
+        None,
+    ),
 }
 
 prolog_links = """

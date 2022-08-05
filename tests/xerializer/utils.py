@@ -30,7 +30,6 @@ def worker_with_queue(obj, q, exit_events):
 
 
 class TestAsPickleable(TestCase):
-
     def test_all(self):
         mc = MyClass(1, 2)
         mc_as = mdl.AsPickleable(mc)
@@ -45,8 +44,8 @@ class TestAsPickleable(TestCase):
 
         with ProcessPoolExecutor() as pool:
             future = pool.submit(
-                worker_with_queue, mdl.AsPickleable(mc := MyClass(1, 2)),
-                None, {})
+                worker_with_queue, mdl.AsPickleable(mc := MyClass(1, 2)), None, {}
+            )
 
         obj, cls = future.result()
         self.assertIs(cls, MyClass)
@@ -57,12 +56,12 @@ class TestAsProcessParam(TestCase):
     def test_process(self):
 
         q = Queue(1)
-        exit_events = {'exit': Event()}
+        exit_events = {"exit": Event()}
 
         p = Process(
             target=worker_with_queue,
-            args=(
-                mdl.AsProcessParam(mc := MyClass(1, 2)), q, exit_events))
+            args=(mdl.AsProcessParam(mc := MyClass(1, 2)), q, exit_events),
+        )
 
         p.start()
         try:
@@ -70,7 +69,7 @@ class TestAsProcessParam(TestCase):
             self.assertIs(cls, MyClass)
             self.assertEqual(obj, mc)
         except BaseException:
-            exit_events['exit'].set()
+            exit_events["exit"].set()
             raise
         finally:
             p.join()

@@ -1,4 +1,8 @@
-from .abstract_type_serializer import TypeSerializer, Serializable, _SerializableSerializer
+from .abstract_type_serializer import (
+    TypeSerializer,
+    Serializable,
+    _SerializableSerializer,
+)
 from pglib.py import entity_name, entity_from_name
 import base64
 from ast import literal_eval
@@ -36,11 +40,11 @@ class Literal(_BuiltinSerializable):
             self.check()
 
     def __str__(self):
-        return f'Literal({self.as_serializable()})'
+        return f"Literal({self.as_serializable()})"
 
     def check(self):
-        if (literal_eval(self.encode()) != self.value):
-            raise ValueError(f'Non-invertible input {self.value}.')
+        if literal_eval(self.encode()) != self.value:
+            raise ValueError(f"Non-invertible input {self.value}.")
 
     def encode(self):
         if isinstance(self.value, str):
@@ -54,7 +58,7 @@ class Literal(_BuiltinSerializable):
         return literal_eval(str_value)
 
     def as_serializable(self):
-        return {'value': self.encode()}
+        return {"value": self.encode()}
 
     @classmethod
     def from_serializable(cls, value):
@@ -87,27 +91,27 @@ class DictSerializer(_BuiltinTypeSerializer):
     """
 
     handled_type = dict
-    signature = 'dict'
+    signature = "dict"
 
     def _build_typed_dict(self, obj, as_serializable):
 
-        val = {_key: as_serializable(_val)
-               for _key, _val in self.as_serializable(obj).items()}
+        val = {
+            _key: as_serializable(_val)
+            for _key, _val in self.as_serializable(obj).items()
+        }
 
-        if '__type__' in val:
-            return {
-                '__type__': self.signature,
-                'value': val
-            }
+        if "__type__" in val:
+            return {"__type__": self.signature, "value": val}
         else:
             return val
 
     def _build_obj(self, obj, from_serializable):
-        if '__type__' in obj:
-            if not set(obj.keys()).issubset(valid_keys := {'__type__', 'value'}):
+        if "__type__" in obj:
+            if not set(obj.keys()).issubset(valid_keys := {"__type__", "value"}):
                 raise ValueError(
-                    f'Invalid keys `{list(obj.keys())}` for dictionary in serializable form. Valid keys are `{list(valid_keys)}`.')
-            if isinstance(value := obj.get('value', {}), dict):
+                    f"Invalid keys `{list(obj.keys())}` for dictionary in serializable form. Valid keys are `{list(valid_keys)}`."
+                )
+            if isinstance(value := obj.get("value", {}), dict):
                 # obj['value'] = {<key including '__type__'> :<value to deserialize>, ...}
                 value = {_key: from_serializable(_val) for _key, _val in value.items()}
             else:
@@ -142,7 +146,7 @@ class TupleSerializer(_BuiltinTypeSerializer):
     handled_type = tuple
 
     def as_serializable(self, obj):
-        return {'value': list(obj)}
+        return {"value": list(obj)}
 
     def from_serializable(self, value):
         return self.handled_type(value)
@@ -161,6 +165,7 @@ class SetSerializer(TupleSerializer):
         Out[2]: {'__type__': 'set', '__value__': [1, 2, 'abc']}
 
     """
+
     handled_type = set
 
 
@@ -187,8 +192,11 @@ class SliceSerializer(_BuiltinTypeSerializer):
     handled_type = slice
 
     def as_serializable(cls, obj):
-        return {_key: _val for _key in ['start', 'stop', 'step']
-                if (_val := getattr(obj, _key)) is not None}
+        return {
+            _key: _val
+            for _key in ["start", "stop", "step"]
+            if (_val := getattr(obj, _key)) is not None
+        }
 
     def from_serializable(cls, start=None, stop=None, step=None):
         return slice(start, stop, step)
@@ -202,10 +210,10 @@ class BytesSerializer(_BuiltinTypeSerializer):
     handled_type = bytes
 
     def as_serializable(self, obj: bytes):
-        return {'value': base64.b64encode(obj).decode('ascii')}
+        return {"value": base64.b64encode(obj).decode("ascii")}
 
     def from_serializable(self, value):
-        return base64.b64decode(value.encode('ascii'))
+        return base64.b64decode(value.encode("ascii"))
 
 
 class ClassSerializer(_BuiltinTypeSerializer):
@@ -214,10 +222,10 @@ class ClassSerializer(_BuiltinTypeSerializer):
     """
 
     handled_type = type
-    signature = 'class'
+    signature = "class"
 
     def as_serializable(self, obj: type):
-        return {'value': entity_name(obj)}
+        return {"value": entity_name(obj)}
 
     def from_serializable(self, value):
         return entity_from_name(value)

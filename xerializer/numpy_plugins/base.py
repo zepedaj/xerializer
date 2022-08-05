@@ -53,12 +53,13 @@ class DtypeSerializer(_BuiltinTypeSerializer):
     def as_nested_lists(cls, dtype, depth=0):
         if isinstance(dtype, np.dtype):
             dtype = dtype_to_descr(dtype)
-            return cls.as_nested_lists(dtype, depth+1)
+            return cls.as_nested_lists(dtype, depth + 1)
         elif isinstance(dtype, list):
-            return [cls.as_nested_lists(_x, depth+1) for _x in dtype]
+            return [cls.as_nested_lists(_x, depth + 1) for _x in dtype]
         elif isinstance(dtype, tuple):
-            return [dtype[0], cls.as_nested_lists(dtype[1], depth+1)] + (
-                [list(dtype[2])] if len(dtype) == 3 else [])
+            return [dtype[0], cls.as_nested_lists(dtype[1], depth + 1)] + (
+                [list(dtype[2])] if len(dtype) == 3 else []
+            )
         elif isinstance(dtype, str):
             return dtype
         else:
@@ -68,8 +69,10 @@ class DtypeSerializer(_BuiltinTypeSerializer):
     def as_nested_tuple_lists(cls, dtype, as_tuple=False):
         if isinstance(dtype, list):
             if as_tuple:
-                out = [dtype[0], cls.as_nested_tuple_lists(dtype[1], as_tuple=False)] + (
-                    [tuple(dtype[2])] if len(dtype) == 3 else [])
+                out = [
+                    dtype[0],
+                    cls.as_nested_tuple_lists(dtype[1], as_tuple=False),
+                ] + ([tuple(dtype[2])] if len(dtype) == 3 else [])
                 out = tuple(out)
             else:
                 out = [cls.as_nested_tuple_lists(_x, as_tuple=True) for _x in dtype]
@@ -83,7 +86,7 @@ class DtypeSerializer(_BuiltinTypeSerializer):
     def as_serializable(self, obj):
         # return {'value': Literal(dtype_to_descr(obj)).encode()}
         obj = sanitize_dtype(obj) if self.sanitize else obj
-        return {'value': self.as_nested_lists(obj)}
+        return {"value": self.as_nested_lists(obj)}
 
     def from_serializable(self, value):
         # return descr_to_dtype(Literal.decode(value))
@@ -93,17 +96,19 @@ class DtypeSerializer(_BuiltinTypeSerializer):
 class NDArrayAsBytesSerializer(_BuiltinTypeSerializer):
 
     handled_type = np.ndarray
-    signature = 'np.array_as_bytes'
+    signature = "np.array_as_bytes"
 
     def as_serializable(self, arr):
         from pglib.numpy import encode_ndarray
-        return {'bytes': base64.b64encode(encode_ndarray(arr)).decode('ascii')}
+
+        return {"bytes": base64.b64encode(encode_ndarray(arr)).decode("ascii")}
 
     def from_serializable(self, bytes):
         from pglib.numpy import decode_ndarray
-        return decode_ndarray(base64.b64decode(bytes.encode('ascii')))
+
+        return decode_ndarray(base64.b64decode(bytes.encode("ascii")))
 
 
 class Datetime64AsBytesSerializer(NDArrayAsBytesSerializer):
     handled_type = np.datetime64
-    signature = 'np.datetime64_as_bytes'
+    signature = "np.datetime64_as_bytes"

@@ -28,7 +28,8 @@ class AsPickleable:
 
     def __init__(self, obj, serializer: Serializer = None):
         self.serialized_serializer = self.bootstrap_serializer.serialize(
-            serializer := (serializer or Serializer()))
+            serializer := (serializer or Serializer())
+        )
         self.serialized_obj = serializer.serialize(obj)
 
     @classmethod
@@ -59,9 +60,9 @@ class AsProcessParam(AsPickleable):
     def __new__(cls, obj, *args, **kwargs):
 
         start_method = get_start_method()
-        if start_method in ['fork', 'forkserver']:
+        if start_method in ["fork", "forkserver"]:
             return obj
-        elif start_method == 'spawn':
+        elif start_method == "spawn":
             return super.__new__(cls, *args, **kwargs)
         else:
-            raise Exception('Unexpected case.')
+            raise Exception("Unexpected case.")

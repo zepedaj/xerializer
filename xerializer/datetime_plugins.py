@@ -5,10 +5,10 @@ import pytz
 
 
 class _PytzTZinfoSerializer:
-    signature = 'pytz.timezone'
+    signature = "pytz.timezone"
 
     def as_serializable(self, obj):
-        return {'name': str(obj)}
+        return {"name": str(obj)}
 
     def from_serializable(cls, name):
         return pytz.timezone(name)
@@ -20,22 +20,23 @@ for _tzname in pytz.all_timezones:
         _tzname,
         (_PytzTZinfoSerializer, _BuiltinTypeSerializer),
         {
-            'handled_type': type(pytz.timezone(_tzname)),
-            '__module__': __name__,
-            'register': True
-        })
+            "handled_type": type(pytz.timezone(_tzname)),
+            "__module__": __name__,
+            "register": True,
+        },
+    )
 
 
 # Register datetime's datetime, timedelta and tzinfo.
 class DatetimeSerializer(_BuiltinTypeSerializer):
-    signature = 'datetime'
+    signature = "datetime"
     handled_type = datetime.datetime
     register = True
 
     def as_serializable(self, obj):
-        out = {'value': obj.replace(tzinfo=None).isoformat()}
+        out = {"value": obj.replace(tzinfo=None).isoformat()}
         if obj.tzinfo:
-            out['timezone'] = obj.tzinfo
+            out["timezone"] = obj.tzinfo
         return out
 
     def from_serializable(self, value, timezone=None):

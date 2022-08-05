@@ -38,21 +38,28 @@ class TypeSerializer(abc.ABC):
 
     def _build_typed_dict(self, obj, as_serializable):
         kwargs = self.as_serializable(obj)
-        if '__type__' in kwargs:
+        if "__type__" in kwargs:
             raise Exception(
-                'Found reserved key \'__type__\' in the keyword args returned by method as_serializable.')
+                "Found reserved key '__type__' in the keyword args returned by method as_serializable."
+            )
         try:
             kwargs_items = kwargs.items()
         except AttributeError:
             raise TypeError(
-                f'Method {type(self).as_serializable} should return a \'Dict[str,Any]\' but instead returned a {type(kwargs)}.')
+                f"Method {type(self).as_serializable} should return a 'Dict[str,Any]' but instead returned a {type(kwargs)}."
+            )
         else:
-            return {'__type__': self.signature,
-                    **{_key: as_serializable(_val) for _key, _val in kwargs_items}}
+            return {
+                "__type__": self.signature,
+                **{_key: as_serializable(_val) for _key, _val in kwargs_items},
+            }
 
     def _build_obj(self, typed_dict, from_serializable):
-        kwargs = {_key: from_serializable(_val)
-                  for _key, _val in typed_dict.items() if _key != '__type__'}
+        kwargs = {
+            _key: from_serializable(_val)
+            for _key, _val in typed_dict.items()
+            if _key != "__type__"
+        }
         return self.from_serializable(**kwargs)
 
     @property
@@ -94,15 +101,14 @@ class TypeSerializer(abc.ABC):
     @staticmethod
     def _decide_register(cls, register_meta):
         if not isabstract(cls) and (
-                register_meta or (
-                register_meta is None and cls.register)):
+            register_meta or (register_meta is None and cls.register)
+        ):
             return True
         elif register_meta:
             # Ideally, this exception message should include the names of the missing methods.
             # But cls.__abstractmethods__ raises an AttributeError at this point in the class
             # creation...
-            raise Exception(
-                f'Cannot register abstract class {cls}.')
+            raise Exception(f"Cannot register abstract class {cls}.")
         return False
 
 
@@ -128,16 +134,12 @@ class _SerializableSerializer(TypeSerializer):
 
     @classmethod
     def create_derived_class(cls, handled_type, name=None, **attributes):
-        name = name or (f'_{handled_type.__name__}_Serializer')
+        name = name or (f"_{handled_type.__name__}_Serializer")
         return type(
             name,
             (cls,),
-            {
-                'handled_type': handled_type,
-                '__module__': __name__,
-                **attributes
-
-            })
+            {"handled_type": handled_type, "__module__": __name__, **attributes},
+        )
 
 
 class Serializable(abc.ABC):
@@ -179,7 +181,9 @@ class Serializable(abc.ABC):
         try:
             return cls(**kwargs)
         except Exception as error:
-            raise Exception(f'Failed deserializing type {cls} ({error}). See above error.')
+            raise Exception(
+                f"Failed deserializing type {cls} ({error}). See above error."
+            )
 
     def __init_subclass__(cls, register_meta=None, **kwargs):
 
@@ -187,16 +191,19 @@ class Serializable(abc.ABC):
 
         if cls.from_serializable and not ismethod(cls.from_serializable):
             raise Exception(
-                f'Did you forget to decorate method \'from_serializable\' from class {cls} with @classmethod?')
+                f"Did you forget to decorate method 'from_serializable' from class {cls} with @classmethod?"
+            )
 
         if not ismethod(cls.get_signature):
             raise Exception(
-                f'Did you forget to decorate method \'get_signature\' from class {cls} with @classmethod?')
+                f"Did you forget to decorate method 'get_signature' from class {cls} with @classmethod?"
+            )
 
         if not isinstance(cls.signature, (str, type(None))):
             raise Exception(
-                f'Error with \'signature\' property definition for class {cls} : Serializables (unlike TypeSerializers) need a property signature that is a string or None. '
-                'No @property-decorated methods allowed.')
+                f"Error with 'signature' property definition for class {cls} : Serializables (unlike TypeSerializers) need a property signature that is a string or None. "
+                "No @property-decorated methods allowed."
+            )
 
         # Class creation also registers it automatically (if the class is not abstract).
         if TypeSerializer._decide_register(cls, register_meta):

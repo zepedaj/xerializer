@@ -30,12 +30,13 @@ def array_to_list(arr, nesting=0):
     elif isinstance(arr, (date, datetime)):
         return arr.isoformat()
     elif isinstance(arr, (tuple, list)):
-        return [array_to_list(_x, nesting+1) for _x in arr]
+        return [array_to_list(_x, nesting + 1) for _x in arr]
     elif isinstance(arr, (np.ndarray, np.datetime64)):
-        return array_to_list(arr.tolist(), nesting+1)
+        return array_to_list(arr.tolist(), nesting + 1)
     else:
         raise TypeError(
-            f'Invalid type {type(arr)} found in input container at nested level {nesting}.')
+            f"Invalid type {type(arr)} found in input container at nested level {nesting}."
+        )
 
     # # Second possibility. Faster?
     # return json.loads(json.dumps(literal_eval(np.array2string(
@@ -46,8 +47,7 @@ def count_dtype_depth(dtype):
     if isinstance(dtype, np.dtype):
         return count_dtype_depth(sanitize_dtype(dtype))
     elif isinstance(dtype, list):
-        return 1 + max(
-            (count_dtype_depth(_sub_dtype) for _sub_dtype in dtype))
+        return 1 + max((count_dtype_depth(_sub_dtype) for _sub_dtype in dtype))
     elif isinstance(dtype, tuple):
         sub_type_name, sub_dtype, sub_dtype_shape = (list(dtype) + [[]])[:3]
         return count_dtype_depth(sub_dtype) + len(sub_dtype_shape)
@@ -58,8 +58,8 @@ def count_dtype_depth(dtype):
 def count_list_depth(container):
     if isinstance(container, list):
         return 1 + max(
-            (count_list_depth(sub_container) for sub_container in container),
-            default=0)
+            (count_list_depth(sub_container) for sub_container in container), default=0
+        )
     else:
         return 0
 
@@ -71,14 +71,20 @@ def nested_lists_to_mixed(container, sanitized_dtype, cutoff_depth, curr_depth=0
     if isinstance(container, list):
         if curr_depth < cutoff_depth:
             # Traversing dimensions of array.
-            return [nested_lists_to_mixed(_x, sanitized_dtype, cutoff_depth, curr_depth+1)
-                    if isinstance(_x, list) else _x
-                    for _x in container]
+            return [
+                nested_lists_to_mixed(_x, sanitized_dtype, cutoff_depth, curr_depth + 1)
+                if isinstance(_x, list)
+                else _x
+                for _x in container
+            ]
         else:
             # Traversing nested dtypes.
-            return tuple([
-                _list_to_array(_x, _sntzd_sub_dt[1])
-                for _x, _sntzd_sub_dt in strict_zip(container, sanitized_dtype)])
+            return tuple(
+                [
+                    _list_to_array(_x, _sntzd_sub_dt[1])
+                    for _x, _sntzd_sub_dt in strict_zip(container, sanitized_dtype)
+                ]
+            )
 
     else:
         return container
@@ -109,14 +115,16 @@ class NDArraySerializer(_BuiltinTypeSerializer):
     Numpy array serialization. Supports reading hand-written serializations with implicit dtype (to be deduced by numpy).
     """
 
-    signature = 'np.array'
+    signature = "np.array"
     handled_type = np.ndarray
     _dtype_serializer = DtypeSerializer()
 
     def as_serializable(self, arr):
         return {
-            'dtype': self._dtype_serializer.as_serializable(sanitize_dtype(arr.dtype))['value'],
-            'value': array_to_list(arr)
+            "dtype": self._dtype_serializer.as_serializable(sanitize_dtype(arr.dtype))[
+                "value"
+            ],
+            "value": array_to_list(arr),
         }
 
     def from_serializable(self, value, dtype=None):
@@ -133,19 +141,15 @@ class _NoArg:
 
 
 class Datetime64Serializer(_BuiltinTypeSerializer):
-    signature = 'np.datetime64'
+    signature = "np.datetime64"
     handled_type = np.datetime64
     _dtype_serializer = DtypeSerializer()
 
     def _get_specifier(self, dtype):
-        return re.fullmatch(r'datetime64\[(?P<spec>.*)\]', str(dtype))['spec']
+        return re.fullmatch(r"datetime64\[(?P<spec>.*)\]", str(dtype))["spec"]
 
     def as_serializable(self, val):
-        return {
-            'args': [
-                str(val),
-                self._get_specifier(val.dtype)]
-        }
+        return {"args": [str(val), self._get_specifier(val.dtype)]}
 
     def from_serializable(self, value=_NoArg, args=_NoArg, dtype=_NoArg):
         """
@@ -155,13 +159,15 @@ class Datetime64Serializer(_BuiltinTypeSerializer):
 
           >>> from xerializer import Serializer
           >>> srlzr = Serializer()
-          >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10'})        
+          >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10'})
           >>> srlzr.from_serializable({'__type__':'np.datetime64', 'args':['2002-10-10', 'h']})
           >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10', 'dtype':<np.dtype>})
 
         """
-        if (sum([value is _NoArg, args is _NoArg])) != 1 or (dtype is not _NoArg and args is not _NoArg):
-            raise ValueError(f'Invalid arguments.')
+        if (sum([value is _NoArg, args is _NoArg])) != 1 or (
+            dtype is not _NoArg and args is not _NoArg
+        ):
+            raise ValueError(f"Invalid arguments.")
         if value is not _NoArg:
             out = np.datetime64(value)
             if dtype is not _NoArg:

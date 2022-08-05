@@ -21,17 +21,24 @@ class TestRegistration(TestCase):
         # Abstract derived class.
         class MyAbstractTypeSerializer(mdl.TypeSerializer):
             pass
+
         self.assertEqual(_as_registered(), [])
         self.assertEqual(_from_registered(), [])
 
         #
-        with self.assertRaisesRegex(Exception, re.escape(
+        with self.assertRaisesRegex(
+            Exception,
+            re.escape(
                 "Cannot register abstract class <class 'tests.xerializer.abstract_type_serializer"
                 ".TestRegistration.test_TypeSerializer_registration.<locals>."
-                "MyFailsedAbstractTypeSerializer'>.")):
+                "MyFailsedAbstractTypeSerializer'>."
+            ),
+        ):
             # containing the following abstract methods: "
             # "['as_serializable', 'handled_type'].")):
-            class MyFailsedAbstractTypeSerializer(mdl.TypeSerializer, register_meta=True):
+            class MyFailsedAbstractTypeSerializer(
+                mdl.TypeSerializer, register_meta=True
+            ):
                 pass
 
         # Non-abstract double-derived class.
@@ -46,20 +53,25 @@ class TestRegistration(TestCase):
 
         # De-serialization only derived class.
         class MyTypeSerializer(mdl.TypeSerializer):
-            signature = 'my_type'
+            signature = "my_type"
             handled_type = str
 
             as_serializable = None
-            aliases = ['alias1', 'alias2']
-        create_signature_aliases(MyTypeSerializer().signature, ['alias3', 'alias4'])
+            aliases = ["alias1", "alias2"]
+
+        create_signature_aliases(MyTypeSerializer().signature, ["alias3", "alias4"])
 
         self.assertEqual(_as_registered(), _as_list)
-        self.assertEqual(_from_registered(), _from_list := (_from_list + [MyTypeSerializer]))
+        self.assertEqual(
+            _from_registered(), _from_list := (_from_list + [MyTypeSerializer])
+        )
 
         # Non-registered derived class
         class MyTypeSerializerChild1(MyTypeSerializer):
             register = False
-            def as_serializable(self): pass
+
+            def as_serializable(self):
+                pass
 
         class MyTypeSerializerChild2(MyTypeSerializerChild1):
             register = True
@@ -73,14 +85,27 @@ class TestRegistration(TestCase):
             register = False
             pass
 
-        self.assertEqual(_as_registered(), _as_list := (
-            _as_list + [MyTypeSerializerChild2, MyTypeSerializerChild4]))
-        self.assertEqual(_from_registered(), _from_list := (
-            _from_list + [MyTypeSerializerChild2, MyTypeSerializerChild4]))
+        self.assertEqual(
+            _as_registered(),
+            _as_list := (_as_list + [MyTypeSerializerChild2, MyTypeSerializerChild4]),
+        )
+        self.assertEqual(
+            _from_registered(),
+            _from_list := (
+                _from_list + [MyTypeSerializerChild2, MyTypeSerializerChild4]
+            ),
+        )
 
         # Test signature aliases
         srlzr = Serializer()
-        for signature in [MyTypeSerializer().signature, 'alias1', 'alias2', 'alias3', 'alias4']:
+        for signature in [
+            MyTypeSerializer().signature,
+            "alias1",
+            "alias2",
+            "alias3",
+            "alias4",
+        ]:
             self.assertIsInstance(
-                srlzr.from_serializable(
-                    {'__type__': signature}), MyTypeSerializer.handled_type)
+                srlzr.from_serializable({"__type__": signature}),
+                MyTypeSerializer.handled_type,
+            )

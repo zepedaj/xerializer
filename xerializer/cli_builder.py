@@ -12,17 +12,23 @@ from frozendict import frozendict
 from pglib.argparse import Argument
 
 ARGPARSE_ARGUMENT_MODULES = Argument(
-    '--modules',
-    help=("A list of comma-separated modules (e.g., `--modules='my.module1, my.module2'`, "
-          "whitespace optional) to load. This can be used e.g., to register "
-          "xerializable types."),
-    nargs=1)
+    "--modules",
+    help=(
+        "A list of comma-separated modules (e.g., `--modules='my.module1, my.module2'`, "
+        "whitespace optional) to load. This can be used e.g., to register "
+        "xerializable types."
+    ),
+    nargs=1,
+)
 
 
 def import_parser_modules(modules):
     if modules:
-        [import_module(_module) for _module in
-         map(str.strip, checked_get_single(modules).split(',')) if _module]
+        [
+            import_module(_module)
+            for _module in map(str.strip, checked_get_single(modules).split(","))
+            if _module
+        ]
 
 
 def _deserialize_hydra(fxn, expected_type=None, serializer=None, **fxn_kwargs):
@@ -36,7 +42,8 @@ def _deserialize_hydra(fxn, expected_type=None, serializer=None, **fxn_kwargs):
         obj = serializer.from_serializable(OmegaConf.to_container(cfg))
         if expected_type and not isinstance(obj, expected_type):
             raise TypeError(
-                f'Expected {expected_type} but received type-{type(obj)} object {obj}.')
+                f"Expected {expected_type} but received type-{type(obj)} object {obj}."
+            )
         fxn(obj, **fxn_kwargs)
 
     return out_fxn
@@ -47,13 +54,14 @@ def worker(deserialized_object):
 
 
 def hydra_cli(
-        worker: Callable,
-        expected_type: Optional[type] = None,
-        serializer: Optional[Serializer] = None,
-        cli_args: List[Argument] = None,
-        excluded_cli_args: List[str] = None,
-        override_hydra_run_dir: bool = True,
-        override_hydra_logging: bool = True):
+    worker: Callable,
+    expected_type: Optional[type] = None,
+    serializer: Optional[Serializer] = None,
+    cli_args: List[Argument] = None,
+    excluded_cli_args: List[str] = None,
+    override_hydra_run_dir: bool = True,
+    override_hydra_logging: bool = True,
+):
     """
 
     :param worker: Callable to execute on the deserialized object. It will take as parameters the deserialized object received from config file, and all ``cli_args`` as keyword arguments.
@@ -120,17 +128,16 @@ def hydra_cli(
     """
 
     # Parse meta arguments config and output_dir
-    parser = argparse.ArgumentParser(description='Train a model.')
+    parser = argparse.ArgumentParser(description="Train a model.")
     parser.add_argument(
-        'config', type=Path,
-        help='Path to hydra *.yaml configuration file.')
-    parser.add_argument('output_dir', type=Path,
-                        help='Output directory root.')
+        "config", type=Path, help="Path to hydra *.yaml configuration file."
+    )
+    parser.add_argument("output_dir", type=Path, help="Output directory root.")
 
     # Pre-process extra args.
     cli_args = cli_args or []
     excluded_cli_args = excluded_cli_args or []
-    excluded_cli_args = [x.replace('-', '_') for x in excluded_cli_args]
+    excluded_cli_args = [x.replace("-", "_") for x in excluded_cli_args]
 
     # Add extra arguments.
     worker_kwarg_names = [_arg.bind(parser).dest for _arg in cli_args]
@@ -139,8 +146,11 @@ def hydra_cli(
     ARGPARSE_ARGUMENT_MODULES.bind(parser)
 
     # Extra hydra parameters.
-    parser.add_argument('hydra_overrides', nargs='*',
-                        help='Configuration file overrides in Hydra syntax.')
+    parser.add_argument(
+        "hydra_overrides",
+        nargs="*",
+        help="Configuration file overrides in Hydra syntax.",
+    )
 
     # Split argparse and hydra arguments
     parsed_args = parser.parse_args()
@@ -152,32 +162,54 @@ def hydra_cli(
     config_path = parsed_args.config.absolute()
     config_path_root = str(config_path.parent)
     config_name = str(config_path.stem)
-    assert config_path.suffix == '.yaml', f'Expected a *.yaml config path, but received a *{config_path.suffix}.'
+    assert (
+        config_path.suffix == ".yaml"
+    ), f"Expected a *.yaml config path, but received a *{config_path.suffix}."
 
     # Prepare args for hydra.
     orig_args = list(sys.argv)
 
     arg0 = sys.argv[0]
     sys.argv.clear()
-    esc_eq = r'\='
+    esc_eq = r"\="
     sys.argv.extend(
-        [arg0] +
-        ([f"hydra.run.dir={str(parsed_args.output_dir.absolute()).replace('=', esc_eq)}"]
-         if override_hydra_run_dir else []) +
-        (["hydra/job_logging=none", "hydra/hydra_logging=none"]
-         if override_hydra_logging else []) +
-        parsed_args.hydra_overrides)
+        [arg0]
+        + (
+            [
+                f"hydra.run.dir={str(parsed_args.output_dir.absolute()).replace('=', esc_eq)}"
+            ]
+            if override_hydra_run_dir
+            else []
+        )
+        + (
+            ["hydra/job_logging=none", "hydra/hydra_logging=none"]
+            if override_hydra_logging
+            else []
+        )
+        + parsed_args.hydra_overrides
+    )
 
     wrapped_call = _deserialize_hydra(
-        worker, expected_type=expected_type, serializer=serializer,
-        **{_name: getattr(parsed_args, _name) for _name in worker_kwarg_names if
-           _name not in excluded_cli_args})
+        worker,
+        expected_type=expected_type,
+        serializer=serializer,
+        **{
+            _name: getattr(parsed_args, _name)
+            for _name in worker_kwarg_names
+            if _name not in excluded_cli_args
+        },
+    )
 
     # Required for config-path trick above to work.
     # Otherwise, hydra assumes the patch is relative to the
     # xerializer package
     wrapped_call.__module__ = None
 
-    return hydra.main(
-        config_path=config_path_root,  # Relative to hydra.searchpath, set above.
-        config_name=config_name)(wrapped_call), parsed_args, orig_args
+    return (
+        hydra.main(
+            config_path=config_path_root,  # Relative to hydra.searchpath, set above.
+            config_name=config_name,
+        )(wrapped_call),
+        parsed_args,
+        orig_args,
+    )

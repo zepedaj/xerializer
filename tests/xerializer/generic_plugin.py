@@ -11,7 +11,6 @@ class MyClass:
 
 
 class TestGeneric(TestCase):
-
     def test_all(self):
         mc = MyClass(b=3)
 
@@ -21,26 +20,26 @@ class TestGeneric(TestCase):
         dmc = srlzr.deserialize(srlzr.serialize(mc))
         with self.assertRaises(AttributeError):
             dmc.a
-        [self.assertEqual(getattr(mc, key), getattr(dmc, key)) for key in ['b']]
+        [self.assertEqual(getattr(mc, key), getattr(dmc, key)) for key in ["b"]]
 
         # With 'only' a
-        mdl.register_generic(MyClass, only=['a'])
+        mdl.register_generic(MyClass, only=["a"])
         srlzr = Serializer()
         dmc = srlzr.deserialize(srlzr.serialize(mc))
         with self.assertRaises(AttributeError):
             dmc.b
-        [self.assertEqual(getattr(mc, key), getattr(dmc, key)) for key in ['a']]
+        [self.assertEqual(getattr(mc, key), getattr(dmc, key)) for key in ["a"]]
         self.assertIs(dmc.source_class, MyClass)
 
         # With 'include' a
-        mdl.register_generic(MyClass, include=['a'])
+        mdl.register_generic(MyClass, include=["a"])
         srlzr = Serializer()
         dmc = srlzr.deserialize(srlzr.serialize(mc))
-        [self.assertEqual(getattr(mc, key), getattr(dmc, key)) for key in ['a', 'b']]
+        [self.assertEqual(getattr(mc, key), getattr(dmc, key)) for key in ["a", "b"]]
         self.assertIs(dmc.source_class, MyClass)
 
         # With 'exclude' b
-        mdl.register_generic(MyClass, exclude=['b'])
+        mdl.register_generic(MyClass, exclude=["b"])
         srlzr = Serializer()
         dmc = srlzr.deserialize(srlzr.serialize(mc))
         with self.assertRaises(AttributeError):
