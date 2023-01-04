@@ -140,39 +140,69 @@ class _NoArg:
     pass
 
 
-class Datetime64Serializer(_BuiltinTypeSerializer):
-    signature = "np.datetime64"
-    handled_type = np.datetime64
-    _dtype_serializer = DtypeSerializer()
-
-    def _get_specifier(self, dtype):
-        return re.fullmatch(r"datetime64\[(?P<spec>.*)\]", str(dtype))["spec"]
-
-    def as_serializable(self, val):
-        return {"args": [str(val), self._get_specifier(val.dtype)]}
+class _Datetime64AndTimeDelta64Serializer_Base(_BuiltinTypeSerializer):
+    _name: str
+    signature: str
+    handled_type: np.dtype
 
     def from_serializable(self, value=_NoArg, args=_NoArg, dtype=_NoArg):
-        """
-        Can read both types of representations:
-
-        .. doctest::
-
-          >>> from xerializer import Serializer
-          >>> srlzr = Serializer()
-          >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10'})
-          >>> srlzr.from_serializable({'__type__':'np.datetime64', 'args':['2002-10-10', 'h']})
-          >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10', 'dtype':<np.dtype>})
-
-        """
         if (sum([value is _NoArg, args is _NoArg])) != 1 or (
             dtype is not _NoArg and args is not _NoArg
         ):
             raise ValueError(f"Invalid arguments.")
         if value is not _NoArg:
-            out = np.datetime64(value)
+            out = self.handled_type(value)
             if dtype is not _NoArg:
                 out = out.astype(dtype)
                 warnings.warn("Argument `dtype` is deprecated.", DeprecationWarning)
             return out
         else:
-            return np.datetime64(*args)
+            return self.handled_type(*args)
+
+
+class Datetime64Serializer(_Datetime64AndTimeDelta64Serializer_Base):
+    """
+    Can read both types of representations:
+
+    .. doctest::
+
+      >>> from xerializer import Serializer
+      >>> srlzr = Serializer()
+      >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10'})
+      >>> srlzr.from_serializable({'__type__':'np.datetime64', 'args':['2002-10-10', 'h']})
+    """
+
+    _name = "datetime64"
+    signature = "np.datetime64"
+    handled_type = np.datetime64
+
+    def _get_specifier(self, dtype):
+        return re.fullmatch(self._name + r"\[(?P<spec>.*)\]", str(dtype))["spec"]
+
+    def as_serializable(self, val):
+        specifier = self._get_specifier(val.dtype)
+        return {"args": ([str(val)] + ([specifier] if specifier else []))}
+
+
+class Timedelta64Serializer(_Datetime64AndTimeDelta64Serializer_Base):
+    """
+    Can read both types of representations:
+
+    .. doctest::
+
+      >>> from xerializer import Serializer
+      >>> srlzr = Serializer()
+      >>> srlzr.from_serializable({'__type__':'np.timedelta64', 'value':20})
+      >>> srlzr.from_serializable({'__type__':'np.timedelta64', 'args':[10, 'h']})
+    """
+
+    _name = "timedelta64"
+    signature = "np.timedelta64"
+    handled_type = np.timedelta64
+
+    def _get_specifier(self, dtype):
+        return re.fullmatch(self._name + r"(\[(?P<spec>.*)\])?", str(dtype))["spec"]
+
+    def as_serializable(self, val):
+        specifier = self._get_specifier(val.dtype)
+        return {"args": ([val.astype(int).item()] + ([specifier] if specifier else []))}

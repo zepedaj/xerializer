@@ -5,7 +5,6 @@
 from inspect import isabstract
 from itertools import chain
 from functools import partial
-from numbers import Number
 from . import builtin_plugins
 from .numpy_plugins import numpy_serializers, numpy_as_bytes_serializers  # noqa
 from pglib.py import filelike_open
@@ -135,11 +134,11 @@ class Serializer:
         Takes an object and converts it to its serializable representation.
         """
 
-        if isinstance(obj, (Number, str, type(None))):
+        if isinstance(obj, (int, float, str, type(None))):
             # Simple types
             return obj
         elif type(obj) is list:
-            # Lists
+            # Lists (excludes list-derived objects)
             srlzd_obj = [self.as_serializable(_val) for _val in obj]
             return srlzd_obj
         else:
@@ -164,7 +163,7 @@ class Serializer:
 
         from_serializable_ = partial(self.from_serializable, permissive=permissive)
 
-        if isinstance(obj, (Number, str, type(None))):
+        if isinstance(obj, (int, float, str, type(None))):
             # Simple types
             return obj
 

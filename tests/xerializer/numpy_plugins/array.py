@@ -221,7 +221,9 @@ class TestDatetime64(TestCase):
             np.datetime64("2020-10-10"),
             np.datetime64("2020-10-10T10:00:00.123"),
         ]:
-            self.assertEqual(_obj, serializer.deserialize(serializer.serialize(_obj)))
+            _dsrlzd_obj = serializer.deserialize(serializer.serialize(_obj))
+            self.assertEqual(_obj, _dsrlzd_obj)
+            assert _obj.dtype == _dsrlzd_obj.dtype
 
     def test_from_serializable(self):
 
@@ -258,3 +260,40 @@ class TestDatetime64(TestCase):
                     actual := serializer.from_serializable(source), expected
                 )
                 self.assertEqual(actual.dtype, expected.dtype)
+
+
+class TestTimedelta64(TestCase):
+    def test_serialize(self):
+        serializer = Serializer()
+        dt64_str = DT64_AS_STR_DTYPE
+        for _obj in [
+            #
+            np.timedelta64(20, "h"),
+            np.timedelta64(10, "us"),
+        ]:
+            _dsrlzd_obj = serializer.deserialize(serializer.serialize(_obj))
+            self.assertEqual(_obj, _dsrlzd_obj)
+            assert _obj.dtype == _dsrlzd_obj.dtype
+
+    def test_from_serializable(self):
+
+        # >>> srlzr.from_serializable({'__type__':'np.timedelta64', 'value':20})
+        # >>> srlzr.from_serializable({'__type__':'np.timedelta64', 'args':[10, 'h']})
+
+        serializer = Serializer()
+        for source, expected in [
+            (
+                {"__type__": "np.timedelta64", "value": 20},
+                np.timedelta64(20),
+            ),
+            (
+                {"__type__": "np.timedelta64", "args": [10, "h"]},
+                np.timedelta64(10, "h"),
+            ),
+            (
+                {"__type__": "np.timedelta64", "args": [0]},
+                np.timedelta64(0),
+            ),
+        ]:
+            self.assertEqual(actual := serializer.from_serializable(source), expected)
+            self.assertEqual(actual.dtype, expected.dtype)
