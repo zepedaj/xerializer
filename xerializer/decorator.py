@@ -3,6 +3,7 @@ from .abstract_type_serializer import TypeSerializer as _TypeSerializer
 import inspect
 from pglib.validation import checked_get_single
 from pglib.py import entity_name
+from typing import Union, Type, Callable
 
 
 def _serializable_init_wrapper(cls_init, apply_defaults):
@@ -138,7 +139,7 @@ def serializable(
     explicit_defaults: bool = True,
     signature=None,
     kwargs_level="auto",
-):
+) -> Union[Type, Callable]:
     """
 
     Decorator that makes a class serializable, or a callable (includes class methods) de-serializable.
