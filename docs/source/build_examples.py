@@ -2,6 +2,7 @@
 import pprint
 import climax as clx
 import numpy as np
+import datetime
 from xerializer import Serializer, Literal
 from pglib.rentemp import RenTempFile
 import sys
@@ -63,6 +64,10 @@ np.dtype([('id', 'i', (2,)),
             ),
             ("Numpy array", "np.array([1,2,3])"),
             ("Datetime64 scalar", "np.datetime64('2020-10-10')"),
+            (
+                "Datetime and time",
+                "datetime.datetime(2020,10,10), datetime.time(10,10,10,12345)",
+            ),
             (
                 "Structured numpy array",
                 """

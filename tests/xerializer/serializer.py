@@ -224,3 +224,19 @@ class TestSerializer(TestCase):
             ),
         ]:
             self.assertEqual(x, srl.deserialize(srl.serialize(x)))
+
+    def test_time_plugins(self):
+        # pytz timezones
+        srl = mdl.Serializer()
+
+        # datetime
+        for x in [
+            # Datetimes
+            datetime.time(10, 10, 10, 12345),
+            datetime.time(23),
+            datetime.time(23, 1),
+            datetime.time(23, 1, 1),
+            datetime.time(23, 1, 1, 99999),
+        ]:
+            self.assertEqual(x, srl.deserialize(srl.serialize(x)))
+            self.assertIsInstance(x, datetime.time)
