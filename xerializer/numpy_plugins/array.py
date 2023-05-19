@@ -106,7 +106,8 @@ def list_to_array(arr_list, dtype):
     Converts a nested list containing no tuples, to one containing a mixture of lists and tuples determined by the specified dtype.
     """
     sanitized_dtype = sanitize_dtype(dtype)
-    arr_list = _list_to_array(arr_list, sanitized_dtype)
+    if arr_list:
+        arr_list = _list_to_array(arr_list, sanitized_dtype)
     return np.array(arr_list, dtype=sanitized_dtype)
 
 

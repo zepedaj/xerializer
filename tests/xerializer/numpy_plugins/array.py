@@ -131,7 +131,6 @@ class TestNDArraySerializer(TestCase):
             npt.assert_equal(str(arr1), str(arr2))
 
     def test_array_to_list(self):
-
         for _arr, _arr_as_list in [
             #
             (np.array(1), 1),
@@ -211,6 +210,32 @@ class TestNDArraySerializer(TestCase):
                 ),
             )
 
+    def test_empty_structured(self):
+        srlzd = {
+            "__type__": "np.array",
+            "dtype": (
+                dtype := [
+                    ["date", "datetime64[m]"],
+                    ["open", "float32"],
+                    ["high", "float32"],
+                    ["low", "float32"],
+                    ["close", "float32"],
+                    ["trades", "float32"],
+                    ["volume", "float32"],
+                    ["volume_weighted_price", "float32"],
+                ]
+            ),
+            "value": [],
+        }
+        serializer = Serializer()
+        serializer.from_serializable(srlzd)
+
+        dtype = [tuple(x) for x in dtype]
+        npt.assert_array_equal(
+            arr := np.array([], dtype),
+            serializer.deserialize(serializer.serialize(arr)),
+        )
+
 
 class TestDatetime64(TestCase):
     def test_serialize(self):
@@ -226,7 +251,6 @@ class TestDatetime64(TestCase):
             assert _obj.dtype == _dsrlzd_obj.dtype
 
     def test_from_serializable(self):
-
         # >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10'})
         # >>> srlzr.from_serializable({'__type__':'np.datetime64', 'args':['2002-10-10', 'h']})
         # >>> srlzr.from_serializable({'__type__':'np.datetime64', 'value':'2002-10-10', 'dtype':<np.dtype>})
@@ -276,7 +300,6 @@ class TestTimedelta64(TestCase):
             assert _obj.dtype == _dsrlzd_obj.dtype
 
     def test_from_serializable(self):
-
         # >>> srlzr.from_serializable({'__type__':'np.timedelta64', 'value':20})
         # >>> srlzr.from_serializable({'__type__':'np.timedelta64', 'args':[10, 'h']})
 
