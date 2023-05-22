@@ -10,7 +10,7 @@ import abc
 from pglib.py import entity_name
 from inspect import isabstract
 from ._registered import register_custom_serializer
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Type
 from inspect import ismethod
 
 
@@ -33,8 +33,21 @@ class TypeSerializer(abc.ABC):
     A list of alternate signatures that this :class:`TypeSerializer` also handles. These can be modified before instantiating any :class:`Serializer`.
     """
 
+    inheritable: bool = False
+    """
+    Specifies whether the type serializer will handle derived types.
+    """
+
     def __init__(self):
         self.aliases = list(self.aliases or [])
+
+    @classmethod
+    def for_derived_class(cls, child_handled_class) -> Type["TypeSerializer"]:
+        # Derive a new type -- supports inheritable type serializers
+        class DerivedTypeSerializer(cls):
+            handled_type = child_handled_class
+
+        return DerivedTypeSerializer()
 
     def _build_typed_dict(self, obj, as_serializable):
         kwargs = self.as_serializable(obj)
@@ -119,12 +132,16 @@ class _SerializableSerializer(TypeSerializer):
 
     @property
     @abc.abstractmethod
-    def handled_type(self):
+    def handled_type(self) -> Type:
         pass
 
     @property
     def signature(self):
         return self.handled_type.get_signature()
+
+    @property
+    def inheritable(self):
+        return self.handled_type.inheritable
 
     def as_serializable(self, obj):
         return obj.as_serializable()
@@ -157,6 +174,11 @@ class Serializable(abc.ABC):
     A class-level property specifying whether to register this with class or not with :class:`xerializer.Serializer`.
     """
 
+    inheritable = False
+    """
+    A class-level property specifying whether derived classes are also automatically serializable.
+    """
+
     @classmethod
     def get_signature(cls):
         """
@@ -186,7 +208,6 @@ class Serializable(abc.ABC):
             )
 
     def __init_subclass__(cls, register_meta=None, **kwargs):
-
         super().__init_subclass__(**kwargs)
 
         if cls.from_serializable and not ismethod(cls.from_serializable):

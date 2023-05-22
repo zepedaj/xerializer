@@ -1,5 +1,7 @@
+from dataclasses import dataclass
 from unittest import TestCase
 import datetime
+from pglib.py import strict_zip
 import pytz
 from xerializer import builtin_plugins
 from xerializer.builtin_plugins import Literal
@@ -11,6 +13,17 @@ from pglib import numpy as pgnp
 import numpy as np
 import numpy.testing as npt
 from numpy.lib.recfunctions import repack_fields
+
+
+@dataclass
+class A:
+    a: int = 0
+    b: int = 1
+
+
+@dataclass
+class B(A):
+    b: int = 10
 
 
 class Mock:
@@ -38,7 +51,6 @@ class MockSerializer(TypeSerializer):
 
 class TestSerializer(TestCase):
     def test_extract_serializers(self):
-
         expanded_plugins = mdl.Serializer._extract_serializers([builtin_plugins])
 
         self.assertTrue(
@@ -105,7 +117,6 @@ class TestSerializer(TestCase):
             self.assertEqual(srl.deserialize(srl.serialize(obj)), obj)
 
     def test_default_extensions(self):
-
         srl = mdl.Serializer()
 
         obj = slice(10, 30, 20)
@@ -131,7 +142,6 @@ class TestSerializer(TestCase):
         self.assertEqual(srl.deserialize(srl.serialize(obj)), obj)
 
     def test_user_extensions(self):
-
         srl = mdl.Serializer([MockSerializer()])
 
         #
@@ -240,3 +250,18 @@ class TestSerializer(TestCase):
         ]:
             self.assertEqual(x, srl.deserialize(srl.serialize(x)))
             self.assertIsInstance(x, datetime.time)
+
+    def test_inheritable(self):
+        class ASerializer(mdl.TypeSerializer):
+            inheritable = True
+            handled_type = A
+
+            def as_serializable(self, obj):
+                return {"a": obj.a, "b": obj.b}
+
+        serializer = mdl.Serializer()
+        orig = [A(), B()]
+        srlzd = serializer.serialize(orig)
+        dsrlzd = serializer.deserialize(srlzd)
+        assert dsrlzd == orig
+        assert all(type(x) == type(y) for x, y in strict_zip(orig, dsrlzd))

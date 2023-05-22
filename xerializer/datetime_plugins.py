@@ -5,27 +5,17 @@ import datetime
 import pytz
 
 
-class _PytzTZinfoSerializer:
+class _PytzTZinfoSerializer(_BuiltinTypeSerializer):
     signature = "pytz.timezone"
+    handled_type = pytz.tzinfo.BaseTzInfo
+    inheritable = True
+    register = True
 
     def as_serializable(self, obj):
         return {"name": str(obj)}
 
     def from_serializable(cls, name):
         return pytz.timezone(name)
-
-
-for _tzname in pytz.all_timezones:
-    # Register all pytz timezone classes.
-    globals()[_tzname] = type(
-        _tzname,
-        (_PytzTZinfoSerializer, _BuiltinTypeSerializer),
-        {
-            "handled_type": type(pytz.timezone(_tzname)),
-            "__module__": __name__,
-            "register": True,
-        },
-    )
 
 
 # Register datetime's datetime, timedelta and tzinfo.

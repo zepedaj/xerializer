@@ -3,11 +3,12 @@
 """
 
 from inspect import isabstract
+import inspect
 from itertools import chain
 from functools import partial
 from . import builtin_plugins
 from .numpy_plugins import numpy_serializers, numpy_as_bytes_serializers  # noqa
-from pglib.py import filelike_open
+from pglib.py import entity_from_name, filelike_open
 import json
 from ._registered import _THIRD_PARTY_PLUGINS
 from typing import TypeVar, Optional, List, Union
@@ -129,6 +130,52 @@ class Serializer:
             else []
         )
 
+    def _get_as_serializable_plugin(self, obj):
+        for base_type in inspect.getmro(type(obj))[:-1]:
+            try:
+                type_serializer = self.as_serializable_plugins[base_type]
+            except KeyError:
+                pass
+            else:
+                if base_type is not type(obj):
+                    if type_serializer.inheritable:
+                        # Derive a new type -- supports inheritable type serializers
+                        return type_serializer.for_derived_class(type(obj))
+                else:
+                    return type_serializer
+
+        raise KeyError(type(obj))
+
+    def _get_from_serializable_plugin(self, signature):
+        # Try to get an exact match
+        try:
+            type_serializer = self.from_serializable_plugins[signature]
+        except KeyError:
+            pass
+        else:
+            return type_serializer
+
+        # Attempt to convert signature to class
+        try:
+            obj_type = entity_from_name(signature)
+        except Exception:
+            raise KeyError(signature)
+
+        # Traverse parent types
+        for base_type in inspect.getmro(obj_type)[1:-1]:
+            try:
+                type_serializer = self.from_serializable_plugins[
+                    self.get_signature(base_type)
+                ]
+            except KeyError:
+                pass
+            else:
+                if type_serializer.inheritable:
+                    # Derive a new type -- supports inheritable type serializers
+                    return type_serializer.for_derived_class(obj_type)
+
+        raise KeyError(signature)
+
     def as_serializable(self, obj):
         """
         Takes an object and converts it to its serializable representation.
@@ -144,7 +191,7 @@ class Serializer:
         else:
             # Dictionaries and plugins
             try:
-                type_serializer = self.as_serializable_plugins[type(obj)]
+                type_serializer = self._get_as_serializable_plugin(obj)
             except KeyError:
                 raise UnserializableType(obj)
             else:
@@ -175,7 +222,7 @@ class Serializer:
             # Dictionaries and plugins
             if signature := obj.get("__type__", None):
                 try:
-                    type_deserializer = self.from_serializable_plugins[signature]
+                    type_deserializer = self._get_from_serializable_plugin(signature)
                 except KeyError:
                     raise ExtensionMissing(signature)
                 else:
