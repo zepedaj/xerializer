@@ -202,7 +202,7 @@ class Serializer:
 
     def from_serializable(self, obj, permissive=False):
         """
-        Takes an serializable representation of an object and converts it to its object form.
+        Takes a serializable representation of an object and converts it to its object form.
 
         :param obj: An object in serializable form that will be deserialized.
         :param permissive: If ``False``, the default, encountering an object or nested object that is not in serializable form will result in an error. If ``True``, the (nested) object will be returned as is.

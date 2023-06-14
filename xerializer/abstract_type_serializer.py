@@ -38,6 +38,11 @@ class TypeSerializer(abc.ABC):
     Specifies whether the type serializer will handle derived types.
     """
 
+    polymorphic: bool = False
+    """
+    If ``True``, :meth:`as_serializable` can return a dictionary with arbitrary key ``'__type__'``.
+    """
+
     def __init__(self):
         self.aliases = list(self.aliases or [])
 
@@ -51,19 +56,19 @@ class TypeSerializer(abc.ABC):
 
     def _build_typed_dict(self, obj, as_serializable):
         kwargs = self.as_serializable(obj)
-        if "__type__" in kwargs:
+        if not self.polymorphic and "__type__" in kwargs:
             raise Exception(
-                "Found reserved key '__type__' in the keyword args returned by method as_serializable."
+                "Found reserved key '__type__' in the keyword args returned by method `as_serializable` when the serializer is not `polymorphic`."
             )
         try:
             kwargs_items = kwargs.items()
         except AttributeError:
             raise TypeError(
-                f"Method {type(self).as_serializable} should return a 'Dict[str,Any]' but instead returned a {type(kwargs)}."
+                f"Method {type(self).as_serializable} should return a ``Dict[str,Any]`` but instead returned a {type(kwargs)}."
             )
         else:
             return {
-                "__type__": self.signature,
+                "__type__": self.signature,  # Might be overwritten by the output of as_serializable if polymorphic=True
                 **{_key: as_serializable(_val) for _key, _val in kwargs_items},
             }
 
@@ -143,6 +148,10 @@ class _SerializableSerializer(TypeSerializer):
     def inheritable(self):
         return self.handled_type.inheritable
 
+    @property
+    def polymorphic(self):
+        return self.handled_type.polymorphic
+
     def as_serializable(self, obj):
         return obj.as_serializable()
 
@@ -177,6 +186,11 @@ class Serializable(abc.ABC):
     inheritable = False
     """
     A class-level property specifying whether derived classes are also automatically serializable.
+    """
+
+    polymorphic: bool = False
+    """
+    If ``True``, :meth:`as_serializable` can return a dictionary with arbitrary key ``'__type__'``.
     """
 
     @classmethod
