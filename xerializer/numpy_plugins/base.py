@@ -93,6 +93,11 @@ class DtypeSerializer(_BuiltinTypeSerializer):
         return np.dtype(self.as_nested_tuple_lists(value))
 
 
+class DtypeSerializer_npvoid(DtypeSerializer):
+    # Numpy versions above 19 have a special type for structured dtype
+    handled_type = type(np.dtype([("a", "f")]))
+
+
 class NDArrayAsBytesSerializer(_BuiltinTypeSerializer):
 
     handled_type = np.ndarray
