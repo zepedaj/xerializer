@@ -1,0 +1,7 @@
+climax
+numpy
+xerializer
+enum_tools
+sphinx_toolbox
+ipython
+sphinx_rtd_theme
