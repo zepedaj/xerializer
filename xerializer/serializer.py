@@ -8,7 +8,7 @@ from itertools import chain
 from functools import partial
 from . import builtin_plugins
 from .numpy_plugins import numpy_serializers, numpy_as_bytes_serializers  # noqa
-from pglib.py import entity_from_name, filelike_open
+from jztools.py import entity_from_name, filelike_open
 import json
 from ._registered import _THIRD_PARTY_PLUGINS
 from typing import TypeVar, Optional, List, Union
@@ -37,7 +37,7 @@ class DeserializationError(Exception):
         )
 
 
-PluginsType = TypeVar(Optional[List[Union[TypeSerializer, ModuleType]]])
+PluginsType = Optional[List[Union[TypeSerializer, ModuleType]]]
 """
 Can be a ``None`` or a list containing :class:`TypeSerializer` class definitions or their modules.
 """
@@ -46,7 +46,7 @@ Can be a ``None`` or a list containing :class:`TypeSerializer` class definitions
 @serializable
 class Serializer:
     """
-    Extension of JSON serializer that also supports objects implementing or being supported by a :class:`~pglib2.abstract_type_serializer.TypeSerializer` interface as well as lists, tuples, sets and dictionaries (with string keys) of such objects. Note that, unlike the default json behavior, :class:`Serializer` preserves types such as tuple and list.
+    Extension of JSON serializer that also supports objects implementing or being supported by a :class:`~jztools2.abstract_type_serializer.TypeSerializer` interface as well as lists, tuples, sets and dictionaries (with string keys) of such objects. Note that, unlike the default json behavior, :class:`Serializer` preserves types such as tuple and list.
 
     Default extensions include :class:`slice` objects and :class:`numpy.dtype` objects.
     """
@@ -114,14 +114,16 @@ class Serializer:
                 chain(
                     *list(
                         # Expand module
-                        [
-                            _srlzr
-                            for _srlzr in vars(_x).values()
-                            if cls._is_type_serializer_subclass(_srlzr)
-                        ]
-                        if isinstance(_x, ModuleType)
-                        # Entry is a TypeSerializer class or some other object
-                        else [_x]
+                        (
+                            [
+                                _srlzr
+                                for _srlzr in vars(_x).values()
+                                if cls._is_type_serializer_subclass(_srlzr)
+                            ]
+                            if isinstance(_x, ModuleType)
+                            # Entry is a TypeSerializer class or some other object
+                            else [_x]
+                        )
                         for _x in plugins
                     )
                 )

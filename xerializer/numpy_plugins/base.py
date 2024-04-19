@@ -104,12 +104,12 @@ class NDArrayAsBytesSerializer(_BuiltinTypeSerializer):
     signature = "np.array_as_bytes"
 
     def as_serializable(self, arr):
-        from pglib.numpy import encode_ndarray
+        from jztools.numpy import encode_ndarray
 
         return {"bytes": base64.b64encode(encode_ndarray(arr)).decode("ascii")}
 
     def from_serializable(self, bytes):
-        from pglib.numpy import decode_ndarray
+        from jztools.numpy import decode_ndarray
 
         return decode_ndarray(base64.b64decode(bytes.encode("ascii")))
 

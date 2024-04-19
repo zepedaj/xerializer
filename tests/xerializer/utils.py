@@ -2,7 +2,7 @@ from xerializer import utils as mdl
 import pickle
 from xerializer import serializable
 from dataclasses import dataclass
-from pglib.parallelization.threading.queue import put_loop, get_loop
+from jztools.parallelization.threading.queue import put_loop, get_loop
 from multiprocessing import Queue, Event, Process
 from concurrent.futures import ProcessPoolExecutor
 

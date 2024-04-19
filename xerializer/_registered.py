@@ -1,4 +1,4 @@
-from pglib.validation import checked_get_unique
+from jztools.validation import checked_get_unique
 from typing import Union, List
 
 
@@ -12,7 +12,7 @@ External modules register their types by appending to this dictionary using :met
 
 def register_custom_serializer(type_serializer):
     """
-    :param type_serializer: The type serializer to register. Should derive from :class:`~pglib2.serializer2.abstract_type_serializer.Serializer`
+    :param type_serializer: The type serializer to register. Should derive from :class:`~jztools2.serializer2.abstract_type_serializer.Serializer`
     :param as_serializable: If ``True`` and ``type_serializer.as_serializable != None``, register this type serializer for serialization.
     :param from_serializable: If ``True`` and ``type_serializer.from_serializable != None``, register this type serializer for deserialization.
     """

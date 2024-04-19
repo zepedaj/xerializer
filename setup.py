@@ -7,6 +7,6 @@ setup(
     packages=find_packages(".", exclude=["tests"]),
     version="0.1.0",
     description="",
-    install_requires=["numpy"],
+    install_requires=["numpy", "pytz", "hydra-core", "frozendict", "jztools"],
     author="Joaquin Zepeda",
 )

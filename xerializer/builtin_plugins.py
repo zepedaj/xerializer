@@ -3,7 +3,7 @@ from .abstract_type_serializer import (
     Serializable,
     _SerializableSerializer,
 )
-from pglib.py import entity_name, entity_from_name
+from jztools.py import entity_name, entity_from_name
 import base64
 from ast import literal_eval
 from abc import ABCMeta

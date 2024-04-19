@@ -1,5 +1,4 @@
 from unittest import TestCase
-from pglib.slice_sequence import SSQ_
 import numpy as np
 import xerializer.numpy_plugins.array as mdl
 import numpy.testing as npt

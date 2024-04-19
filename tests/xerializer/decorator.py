@@ -1,5 +1,5 @@
 from xerializer import decorator as mdl, Serializer
-from pglib.py import entity_name
+from jztools.py import entity_name
 from xerializer.serializer import UnserializableType
 from unittest import TestCase
 

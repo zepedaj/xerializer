@@ -2,7 +2,7 @@ from .base import DtypeSerializer
 import warnings
 import re
 from xerializer.builtin_plugins import _BuiltinTypeSerializer
-from pglib.py import strict_zip
+from jztools.py import strict_zip
 from datetime import date, datetime
 import numpy as np
 from numbers import Number
@@ -72,9 +72,13 @@ def nested_lists_to_mixed(container, sanitized_dtype, cutoff_depth, curr_depth=0
         if curr_depth < cutoff_depth:
             # Traversing dimensions of array.
             return [
-                nested_lists_to_mixed(_x, sanitized_dtype, cutoff_depth, curr_depth + 1)
-                if isinstance(_x, list)
-                else _x
+                (
+                    nested_lists_to_mixed(
+                        _x, sanitized_dtype, cutoff_depth, curr_depth + 1
+                    )
+                    if isinstance(_x, list)
+                    else _x
+                )
                 for _x in container
             ]
         else:

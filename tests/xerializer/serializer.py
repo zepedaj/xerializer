@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from unittest import TestCase
 import datetime
-from pglib.py import strict_zip
+from jztools.py import strict_zip
 import pytz
 from xerializer import builtin_plugins
 from xerializer.builtin_plugins import Literal
@@ -9,7 +9,7 @@ from json import JSONDecodeError
 from tempfile import NamedTemporaryFile
 from xerializer import serializer as mdl
 from xerializer.abstract_type_serializer import TypeSerializer
-from pglib import numpy as pgnp
+from jztools import numpy as pgnp
 import numpy as np
 import numpy.testing as npt
 from numpy.lib.recfunctions import repack_fields

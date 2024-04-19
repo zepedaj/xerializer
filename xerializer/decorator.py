@@ -1,8 +1,8 @@
 import functools
 from .abstract_type_serializer import TypeSerializer as _TypeSerializer
 import inspect
-from pglib.validation import checked_get_single
-from pglib.py import entity_name
+from jztools.validation import checked_get_single
+from jztools.py import entity_name
 from typing import Union, Type, Callable
 
 

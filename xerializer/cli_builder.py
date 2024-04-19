@@ -1,5 +1,5 @@
 # CLI support
-from pglib.validation import checked_get_single
+from jztools.validation import checked_get_single
 from importlib import import_module
 import sys
 import argparse
@@ -9,7 +9,7 @@ from pathlib import Path
 from xerializer import Serializer
 from omegaconf import DictConfig, OmegaConf
 from frozendict import frozendict
-from pglib.argparse import Argument
+from xerializer._argparse import Argument
 
 ARGPARSE_ARGUMENT_MODULES = Argument(
     "--modules",

@@ -1,6 +1,6 @@
 from xerializer import serializable, cli_builder
 import json
-from pglib.argparse import Argument
+from xerializer._argparse import Argument
 
 
 @serializable(signature="DmyTrainManager")

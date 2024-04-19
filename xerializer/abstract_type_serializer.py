@@ -6,8 +6,9 @@
   * Create an @serializable class decorator that assumes the __init__ function takes only serializables. Arguments in the @serializable can be similar to those in class Serializable.
 
 """
+
 import abc
-from pglib.py import entity_name
+from jztools.py import entity_name
 from inspect import isabstract
 from ._registered import register_custom_serializer
 from typing import Dict, Any, Optional, List, Type
